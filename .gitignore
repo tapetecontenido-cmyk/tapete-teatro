@@ -2,6 +2,10 @@ node_modules/
 .env
 .env.local
 .env.production
+.env.production.local
 dist/
 .DS_Store
 *.log
+backend/.env
+frontend/.env.local
+frontend/.env.production.local
