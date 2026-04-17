@@ -47,7 +47,7 @@ function MetricCard({ titulo, valor, subtitulo, icono: Icono, color, cargando })
       {cargando ? (
         <div className="h-8 bg-gray-100 rounded animate-pulse w-20" />
       ) : (
-        <p className="font-display text-3xl text-gray-900">{valor}</p>
+        <p className="text-3xl text-gray-900" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>{valor}</p>
       )}
       <p className="text-sm text-gray-500 mt-1 font-heading">{titulo}</p>
     </div>
