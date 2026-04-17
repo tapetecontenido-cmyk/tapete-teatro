@@ -1,0 +1,74 @@
+// storage.rules
+// Reglas de Firebase Storage — Tapete Teatro
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Comprobantes de pago: solo admin puede ver/eliminar ───────────
+    match /comprobantes/{filename} {
+      allow read:   if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      allow create: if request.auth != null
+                    && request.resource.size < 5 * 1024 * 1024 // max 5MB
+                    && request.resource.contentType.matches('image/.*|application/pdf');
+      allow delete: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // ── Fotos de perfil: solo el propio usuario ────────────────────────
+    match /perfiles/{uid}/{filename} {
+      allow read:   if request.auth != null;
+      allow create, update: if request.auth.uid == uid
+                            && request.resource.size < 5 * 1024 * 1024
+                            && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth.uid == uid ||
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ── Posters de obras: solo admin ──────────────────────────────────
+    match /posters/{filename} {
+      allow read:   if true; // Público
+      allow create: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      ) && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // ── Materiales de talleres: alumnos inscritos + profesor + admin ──
+    match /talleres/{tallerId}/materiales/{filename} {
+      allow read: if request.auth != null; // Verificar inscripción en Firestore
+      allow create: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'profesor']
+      ) && request.resource.size < 50 * 1024 * 1024; // 50MB para PDFs
+      allow delete: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'profesor']
+      );
+    }
+
+    // ── Fotos de talleres ─────────────────────────────────────────────
+    match /talleres/{tallerId}/fotos/{filename} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'profesor']
+      ) && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'profesor']
+      );
+    }
+
+    // ── Imágenes de noticias ──────────────────────────────────────────
+    match /noticias/{filename} {
+      allow read:   if true; // Público
+      allow create: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      ) && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+  }
+}

@@ -1,0 +1,9 @@
+Coloca aquí los archivos de fuente de marca:
+- Unpredictable.woff2
+- Unpredictable.woff
+- BritishInseratMN.woff2
+- BritishInseratMN.woff
+
+Estas fuentes son propietarias de la marca Tapete Teatro.
+Si no las tienes disponibles, las clases de Tailwind usarán
+la fuente de respaldo 'DM Sans' automáticamente.
