@@ -20,42 +20,28 @@ const POSICIONES_ESCENARIO = [
   { val: 'centro',    label: '⊞ Centro' },
 ];
 
-// ── Calcula la distribución de asientos según posición del escenario ──
-function calcularDistribucion(totalSillas, filas, posicion) {
-  if (posicion === 'arriba' || posicion === 'abajo') {
-    const cols = Math.ceil(totalSillas / filas);
-    return { filasArriba: posicion === 'abajo' ? filas : 0, filasBajo: posicion === 'arriba' ? filas : 0, colsLado: 0, cols, filasLado: 0 };
-  }
-  if (posicion === 'izquierda' || posicion === 'derecha') {
-    const cols = Math.ceil(totalSillas / filas);
-    return { filasArriba: 0, filasBajo: 0, colsLado: cols, filasLado: filas, cols };
-  }
-  // Centro: distribuir en los 4 lados
-  const sillasPorLado = Math.floor(totalSillas / 4);
-  const resto = totalSillas % 4;
-  const arriba = sillasPorLado + (resto > 0 ? 1 : 0);
-  const abajo  = sillasPorLado + (resto > 1 ? 1 : 0);
-  const izq    = sillasPorLado + (resto > 2 ? 1 : 0);
-  const der    = sillasPorLado;
-  const colsH  = Math.max(Math.ceil(arriba / 1), Math.ceil(abajo / 1));
-  const filasV = Math.max(izq, der);
-  return { arriba, abajo, izq, der, colsH, filasV };
-}
-
 // ── Vista previa del croquis ───────────────────────────────────────────
-function VistaPrevia({ config, onToggleInhabilitado }) {
-  const { totalSillas = 30, filas = 5, posicionEscenario = 'arriba', vipFilas = [], inhabilitados = [] } = config;
+function VistaPrevia({ config, onToggleAsiento }) {
+  const {
+    totalSillas       = 30,
+    filas             = 5,
+    posicionEscenario = 'arriba',
+    vipAsientos       = [],
+    inhabilitados     = [],
+  } = config;
 
-  const getSeatClass = (seatId, fila) => {
+  const getSeatClass = (seatId) => {
     if (inhabilitados.includes(seatId)) return 'bg-gray-300 border-gray-400';
-    if (vipFilas.includes(fila))        return 'bg-yellow-400 border-yellow-500';
+    if (vipAsientos.includes(seatId))   return 'bg-yellow-400 border-yellow-500';
     return 'bg-cyan/30 border-cyan';
   };
 
-  const Seat = ({ seatId, fila }) => (
-    <button type="button" onClick={() => onToggleInhabilitado(seatId)}
-      title={seatId}
-      className={clsx('w-6 h-6 rounded border transition-all hover:opacity-70', getSeatClass(seatId, fila))} />
+  const Seat = ({ seatId }) => (
+    <button type="button" onClick={() => onToggleAsiento(seatId)}
+      title={`Asiento ${seatId} — clic para cambiar estado`}
+      className={clsx('w-6 h-6 rounded border transition-all hover:opacity-70 text-xs', getSeatClass(seatId))}>
+      {seatId}
+    </button>
   );
 
   const Escenario = ({ className = '' }) => (
@@ -64,114 +50,75 @@ function VistaPrevia({ config, onToggleInhabilitado }) {
     </div>
   );
 
-  // Generar filas de asientos simples (arriba/abajo/izq/der)
-  const generarFilas = (numFilas, colsPorFila, offsetFila = 0) => {
-    return Array.from({ length: numFilas }, (_, fi) => {
-      const filaLabel = String.fromCharCode(65 + fi + offsetFila);
-      return (
-        <div key={filaLabel} className="flex items-center gap-1">
-          <span className="w-5 text-center text-xs text-gray-400 font-heading">{filaLabel}</span>
-          <div className="flex gap-1 flex-wrap">
-            {Array.from({ length: colsPorFila }, (_, ci) => {
-              const seatId = `${filaLabel}${ci + 1}`;
-              return <Seat key={seatId} seatId={seatId} fila={filaLabel} />;
-            })}
-          </div>
-        </div>
-      );
-    });
-  };
-
   const cols = Math.ceil(totalSillas / filas);
 
-  if (posicionEscenario === 'arriba') {
-    return (
-      <div className="flex flex-col gap-3 items-center">
-        <Escenario className="w-3/4" />
-        <div className="flex flex-col gap-1">{generarFilas(filas, cols)}</div>
+  const generarFilas = (numFilas, colsPorFila, offset = 0) =>
+    Array.from({ length: numFilas }, (_, fi) => (
+      <div key={fi} className="flex gap-1 flex-wrap justify-center">
+        {Array.from({ length: colsPorFila }, (_, ci) => {
+          const seatId = String(fi * colsPorFila + ci + 1 + offset);
+          return <Seat key={seatId} seatId={seatId} />;
+        })}
       </div>
-    );
-  }
+    ));
 
-  if (posicionEscenario === 'abajo') {
-    return (
-      <div className="flex flex-col gap-3 items-center">
-        <div className="flex flex-col gap-1">{generarFilas(filas, cols)}</div>
-        <Escenario className="w-3/4" />
-      </div>
-    );
-  }
+  if (posicionEscenario === 'arriba') return (
+    <div className="flex flex-col gap-3 items-center w-full">
+      <Escenario className="w-3/4" />
+      <div className="flex flex-col gap-1 w-full">{generarFilas(filas, cols)}</div>
+    </div>
+  );
 
-  if (posicionEscenario === 'izquierda') {
-    return (
-      <div className="flex gap-4 items-center">
-        <Escenario className="writing-mode-vertical h-32 flex items-center justify-center px-2 py-4" />
-        <div className="flex flex-col gap-1">{generarFilas(filas, cols)}</div>
-      </div>
-    );
-  }
+  if (posicionEscenario === 'abajo') return (
+    <div className="flex flex-col gap-3 items-center w-full">
+      <div className="flex flex-col gap-1 w-full">{generarFilas(filas, cols)}</div>
+      <Escenario className="w-3/4" />
+    </div>
+  );
 
-  if (posicionEscenario === 'derecha') {
-    return (
-      <div className="flex gap-4 items-center">
-        <div className="flex flex-col gap-1">{generarFilas(filas, cols)}</div>
-        <Escenario className="h-32 flex items-center justify-center px-2 py-4" />
-      </div>
-    );
-  }
+  if (posicionEscenario === 'izquierda') return (
+    <div className="flex gap-4 items-center">
+      <Escenario className="h-24 flex items-center justify-center px-2 py-4 flex-shrink-0" />
+      <div className="flex flex-col gap-1">{generarFilas(filas, cols)}</div>
+    </div>
+  );
 
-  // Centro — distribuir sillas en 4 lados
+  if (posicionEscenario === 'derecha') return (
+    <div className="flex gap-4 items-center">
+      <div className="flex flex-col gap-1">{generarFilas(filas, cols)}</div>
+      <Escenario className="h-24 flex items-center justify-center px-2 py-4 flex-shrink-0" />
+    </div>
+  );
+
   if (posicionEscenario === 'centro') {
-    const sillasPorLado = Math.floor(totalSillas / 4);
-    const resto = totalSillas % 4;
-    const sillaArr  = sillasPorLado + (resto > 0 ? 1 : 0);
-    const sillaAbj  = sillasPorLado + (resto > 1 ? 1 : 0);
-    const sillaIzq  = sillasPorLado + (resto > 2 ? 1 : 0);
-    const sillaDer  = sillasPorLado;
-    const colsH     = Math.ceil(Math.max(sillaArr, sillaAbj) / 1);
-    const filasLat  = Math.ceil(Math.max(sillaIzq, sillaDer) / 1);
+    const por4 = Math.floor(totalSillas / 4);
+    const r    = totalSillas % 4;
+    const sArr = por4 + (r > 0 ? 1 : 0);
+    const sAbj = por4 + (r > 1 ? 1 : 0);
+    const sIzq = por4 + (r > 2 ? 1 : 0);
+    const sDer = por4;
+    const startArr = 1, startIzq = startArr + sArr, startDer = startIzq + sIzq, startAbj = startDer + sDer;
 
-    // Sillas arriba (1 fila)
-    const SillasArriba = () => (
+    const Horiz = ({ count, start }) => (
       <div className="flex gap-1 justify-center">
-        {Array.from({ length: sillaArr }, (_, i) => {
-          const seatId = `A${i + 1}`;
-          return <Seat key={seatId} seatId={seatId} fila="A" />;
-        })}
+        {Array.from({ length: count }, (_, i) => <Seat key={start+i} seatId={String(start+i)} />)}
       </div>
     );
-
-    // Sillas abajo (1 fila)
-    const SillasAbajo = () => (
-      <div className="flex gap-1 justify-center">
-        {Array.from({ length: sillaAbj }, (_, i) => {
-          const seatId = `D${i + 1}`;
-          return <Seat key={seatId} seatId={seatId} fila="D" />;
-        })}
-      </div>
-    );
-
-    // Sillas laterales (columna vertical)
-    const SillasLateral = ({ count, filaPrefix }) => (
+    const Vert = ({ count, start }) => (
       <div className="flex flex-col gap-1">
-        {Array.from({ length: count }, (_, i) => {
-          const seatId = `${filaPrefix}${i + 1}`;
-          return <Seat key={seatId} seatId={seatId} fila={filaPrefix} />;
-        })}
+        {Array.from({ length: count }, (_, i) => <Seat key={start+i} seatId={String(start+i)} />)}
       </div>
     );
 
     return (
       <div className="flex flex-col gap-2 items-center">
-        <SillasArriba />
+        <Horiz count={sArr} start={startArr} />
         <div className="flex gap-3 items-center">
-          <SillasLateral count={sillaIzq} filaPrefix="B" />
-          <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold py-6 px-8 rounded-lg">
-            ESCENARIO
-          </div>
-          <SillasLateral count={sillaDer} filaPrefix="C" />
+          <Vert count={sIzq} start={startIzq} />
+          <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold py-8 px-6 rounded-xl">ESCENARIO</div>
+          <Vert count={sDer} start={startDer} />
         </div>
-        <SillasAbajo />
+        <Horiz count={sAbj} start={startAbj} />
       </div>
     );
   }
@@ -185,27 +132,33 @@ function ConfiguradorAsientos({ config, onChange }) {
     totalSillas       = 30,
     filas             = 5,
     posicionEscenario = 'arriba',
-    vipFilas          = [],
+    vipAsientos       = [],
     inhabilitados     = [],
   } = config;
 
-  const filaLabels = Array.from({ length: filas }, (_, i) => String.fromCharCode(65 + i));
+  // Loop de 3 estados: general → vip → inhabilitado → general
+  const toggleEstadoAsiento = (seatId) => {
+    const esVip   = vipAsientos.includes(seatId);
+    const esInhab = inhabilitados.includes(seatId);
 
-  const toggleVip = (fila) => {
-    const nuevas = vipFilas.includes(fila) ? vipFilas.filter(f => f !== fila) : [...vipFilas, fila];
-    onChange({ ...config, vipFilas: nuevas });
-  };
-
-  const toggleInhabilitado = (seatId) => {
-    const nuevos = inhabilitados.includes(seatId)
-      ? inhabilitados.filter(s => s !== seatId)
-      : [...inhabilitados, seatId];
-    onChange({ ...config, inhabilitados: nuevos });
+    if (!esVip && !esInhab) {
+      // General → VIP
+      onChange({ ...config, vipAsientos: [...vipAsientos, seatId] });
+    } else if (esVip) {
+      // VIP → Inhabilitado
+      onChange({
+        ...config,
+        vipAsientos:  vipAsientos.filter(s => s !== seatId),
+        inhabilitados: [...inhabilitados, seatId],
+      });
+    } else {
+      // Inhabilitado → General
+      onChange({ ...config, inhabilitados: inhabilitados.filter(s => s !== seatId) });
+    }
   };
 
   return (
     <div className="space-y-5">
-      {/* Controles numéricos */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label-field">Total de sillas</label>
@@ -221,7 +174,6 @@ function ConfiguradorAsientos({ config, onChange }) {
         </div>
       </div>
 
-      {/* Posición del escenario */}
       <div>
         <label className="label-field mb-2">Posición del escenario</label>
         <div className="grid grid-cols-5 gap-2">
@@ -230,9 +182,7 @@ function ConfiguradorAsientos({ config, onChange }) {
               onClick={() => onChange({ ...config, posicionEscenario: val })}
               className={clsx(
                 'py-2 px-1 rounded-xl text-xs font-heading font-bold border-2 transition-all text-center',
-                posicionEscenario === val
-                  ? 'border-azul bg-azul text-white'
-                  : 'border-gray-200 text-gray-600 hover:border-azul hover:text-azul'
+                posicionEscenario === val ? 'border-azul bg-azul text-white' : 'border-gray-200 text-gray-600 hover:border-azul hover:text-azul'
               )}>
               {label}
             </button>
@@ -240,28 +190,11 @@ function ConfiguradorAsientos({ config, onChange }) {
         </div>
       </div>
 
-      {/* Filas VIP */}
-      {(posicionEscenario === 'arriba' || posicionEscenario === 'abajo') && (
-        <div>
-          <label className="label-field">Filas VIP</label>
-          <div className="flex flex-wrap gap-2">
-            {filaLabels.map(f => (
-              <button key={f} type="button" onClick={() => toggleVip(f)}
-                className={clsx('w-8 h-8 rounded-lg text-xs font-heading font-bold border-2 transition-all',
-                  vipFilas.includes(f)
-                    ? 'bg-yellow-400 border-yellow-500 text-yellow-900'
-                    : 'bg-white border-gray-200 text-gray-500 hover:border-yellow-400'
-                )}>{f}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Vista previa */}
       <div>
-        <label className="label-field mb-2">Vista previa — clic para inhabilitar asiento</label>
+        <label className="label-field mb-1">Vista previa</label>
+        <p className="text-xs text-gray-400 mb-2">Clic 1x → VIP (amarillo) · Clic 2x → Inhabilitado (gris) · Clic 3x → General (azul)</p>
         <div className="bg-gray-50 rounded-xl p-4 overflow-x-auto min-h-32 flex items-center justify-center">
-          <VistaPrevia config={config} onToggleInhabilitado={toggleInhabilitado} />
+          <VistaPrevia config={config} onToggleAsiento={toggleEstadoAsiento} />
         </div>
         <div className="flex gap-4 justify-center mt-3 text-xs text-gray-500">
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-cyan/30 border border-cyan inline-block" /> General</span>
@@ -357,7 +290,7 @@ export default function AdminCartelera() {
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState({ nombre: '', genero: '', descripcion: '', director: '', reparto: '', duracion: '', precioGeneral: '', precioVip: '' });
   const [layoutConfig, setLayoutConfig] = useState({
-    totalSillas: 30, filas: 5, posicionEscenario: 'arriba', vipFilas: [], inhabilitados: []
+    totalSillas: 30, filas: 5, posicionEscenario: 'arriba', vipAsientos: [], inhabilitados: []
   });
   const [poster, setPoster] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -373,14 +306,14 @@ export default function AdminCartelera() {
   const abrirNuevo = () => {
     setEditando(null);
     setForm({ nombre: '', genero: '', descripcion: '', director: '', reparto: '', duracion: '', precioGeneral: '', precioVip: '' });
-    setLayoutConfig({ totalSillas: 30, filas: 5, posicionEscenario: 'arriba', vipFilas: [], inhabilitados: [] });
+    setLayoutConfig({ totalSillas: 30, filas: 5, posicionEscenario: 'arriba', vipAsientos: [], inhabilitados: [] });
     setPoster(null); setMostrarAsientos(false); setModal(true);
   };
 
   const abrirEditar = (obra) => {
     setEditando(obra);
     setForm({ nombre: obra.nombre, genero: obra.genero || '', descripcion: obra.descripcion || '', director: obra.director || '', reparto: obra.reparto || '', duracion: obra.duracion || '', precioGeneral: obra.precioGeneral || '', precioVip: obra.precioVip || '' });
-    setLayoutConfig(obra.layoutConfig || { totalSillas: 30, filas: 5, posicionEscenario: 'arriba', vipFilas: [], inhabilitados: [] });
+    setLayoutConfig(obra.layoutConfig || { totalSillas: 30, filas: 5, posicionEscenario: 'arriba', vipAsientos: [], inhabilitados: [] });
     setPoster(null); setMostrarAsientos(false); setModal(true);
   };
 

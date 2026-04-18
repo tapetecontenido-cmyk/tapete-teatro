@@ -31,7 +31,7 @@ export default function SeatSelector({
       if (snap.exists()) {
         const data = snap.data();
         setAsientosOcupados(new Set([
-          ...(data.ocupados  || []),
+          ...(data.ocupados   || []),
           ...(data.reservados || []),
         ]));
       }
@@ -49,29 +49,22 @@ export default function SeatSelector({
     totalSillas       = 30,
     filas             = 5,
     posicionEscenario = 'arriba',
-    vipFilas          = [],
+    vipAsientos       = [],
     inhabilitados     = [],
   } = layoutConfig;
 
   const colsPorFila = Math.ceil(totalSillas / filas);
 
-  // Numeración global: asiento 1, 2, 3...
-  const getSeatId = (filaIdx, colIdx) => {
-    return String(filaIdx * colsPorFila + colIdx + 1);
-  };
-
-  const getSeatType = (seatId, filaIdx) => {
-    if (asientosOcupados.has(seatId))  return 'occupied';
-    if (inhabilitados.includes(seatId)) return 'blocked';
-    if (seleccionados.includes(seatId)) return 'selected';
-    // VIP por fila (usando letra de fila para compatibilidad)
-    const filaLetra = String.fromCharCode(65 + filaIdx);
-    if (vipFilas.includes(filaLetra))   return 'vip';
+  const getSeatType = (seatId) => {
+    if (asientosOcupados.has(seatId))    return 'occupied';
+    if (inhabilitados.includes(seatId))  return 'blocked';
+    if (seleccionados.includes(seatId))  return 'selected';
+    if (vipAsientos.includes(seatId))    return 'vip';
     return 'general';
   };
 
-  const handleSeatClick = (seatId, filaIdx) => {
-    const tipo = getSeatType(seatId, filaIdx);
+  const handleSeatClick = (seatId) => {
+    const tipo = getSeatType(seatId);
     if (tipo === 'occupied' || tipo === 'blocked') return;
     setSeleccionados(prev => {
       if (prev.includes(seatId)) return prev.filter(s => s !== seatId);
@@ -83,24 +76,19 @@ export default function SeatSelector({
   const calcTotal = () => {
     let total = 0;
     for (const seatId of seleccionados) {
-      // Determinar si es VIP por el número del asiento
-      const num  = Number(seatId);
-      const fi   = Math.floor((num - 1) / colsPorFila);
-      const letra = String.fromCharCode(65 + fi);
-      total += vipFilas.includes(letra) ? precioVip : precioGeneral;
+      total += vipAsientos.includes(seatId) ? precioVip : precioGeneral;
     }
     return total;
   };
 
-  // Genera una fila de asientos
-  const FilaAsientos = ({ filaIdx, numCols, offsetNum = 0 }) => (
+  const FilaAsientos = ({ filaIdx, numCols, offset = 0 }) => (
     <div className="flex gap-1 flex-wrap justify-center">
       {Array.from({ length: numCols }, (_, ci) => {
-        const seatId = String(filaIdx * colsPorFila + ci + 1 + offsetNum);
-        const tipo   = getSeatType(seatId, filaIdx);
+        const seatId = String(filaIdx * colsPorFila + ci + 1 + offset);
+        const tipo   = getSeatType(seatId);
         return (
           <button key={seatId}
-            onClick={() => handleSeatClick(seatId, filaIdx)}
+            onClick={() => handleSeatClick(seatId)}
             className={clsx('seat', SEAT_TYPES[tipo].class)}
             title={`Asiento ${seatId}`}
             disabled={tipo === 'occupied' || tipo === 'blocked'}
@@ -118,108 +106,64 @@ export default function SeatSelector({
     </div>
   );
 
-  // Render según posición del escenario
   const renderCroquis = () => {
-    if (posicionEscenario === 'arriba') {
-      return (
-        <div className="flex flex-col gap-3 items-center">
-          <Escenario />
-          <div className="w-full h-px bg-gradient-brand opacity-20" />
-          <div className="flex flex-col gap-1.5 w-full">
-            {Array.from({ length: filas }, (_, fi) => (
-              <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />
-            ))}
-          </div>
+    if (posicionEscenario === 'arriba') return (
+      <div className="flex flex-col gap-3 items-center w-full">
+        <Escenario />
+        <div className="w-full h-px bg-gradient-brand opacity-20" />
+        <div className="flex flex-col gap-1.5 w-full">
+          {Array.from({ length: filas }, (_, fi) => <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />)}
         </div>
-      );
-    }
+      </div>
+    );
 
-    if (posicionEscenario === 'abajo') {
-      return (
-        <div className="flex flex-col gap-3 items-center">
-          <div className="flex flex-col gap-1.5 w-full">
-            {Array.from({ length: filas }, (_, fi) => (
-              <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />
-            ))}
-          </div>
-          <div className="w-full h-px bg-gradient-brand opacity-20" />
-          <Escenario />
+    if (posicionEscenario === 'abajo') return (
+      <div className="flex flex-col gap-3 items-center w-full">
+        <div className="flex flex-col gap-1.5 w-full">
+          {Array.from({ length: filas }, (_, fi) => <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />)}
         </div>
-      );
-    }
+        <div className="w-full h-px bg-gradient-brand opacity-20" />
+        <Escenario />
+      </div>
+    );
 
-    if (posicionEscenario === 'izquierda') {
-      return (
-        <div className="flex gap-4 items-center">
-          <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold rounded-xl px-3 py-8 flex-shrink-0 writing-mode-vertical">
-            ESCENARIO
-          </div>
-          <div className="flex flex-col gap-1.5 flex-1">
-            {Array.from({ length: filas }, (_, fi) => (
-              <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />
-            ))}
-          </div>
+    if (posicionEscenario === 'izquierda') return (
+      <div className="flex gap-4 items-center">
+        <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold rounded-xl px-3 py-8 flex-shrink-0">ESCENARIO</div>
+        <div className="flex flex-col gap-1.5 flex-1">
+          {Array.from({ length: filas }, (_, fi) => <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />)}
         </div>
-      );
-    }
+      </div>
+    );
 
-    if (posicionEscenario === 'derecha') {
-      return (
-        <div className="flex gap-4 items-center">
-          <div className="flex flex-col gap-1.5 flex-1">
-            {Array.from({ length: filas }, (_, fi) => (
-              <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />
-            ))}
-          </div>
-          <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold rounded-xl px-3 py-8 flex-shrink-0">
-            ESCENARIO
-          </div>
+    if (posicionEscenario === 'derecha') return (
+      <div className="flex gap-4 items-center">
+        <div className="flex flex-col gap-1.5 flex-1">
+          {Array.from({ length: filas }, (_, fi) => <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />)}
         </div>
-      );
-    }
+        <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold rounded-xl px-3 py-8 flex-shrink-0">ESCENARIO</div>
+      </div>
+    );
 
-    // Centro — sillas en 4 lados
     if (posicionEscenario === 'centro') {
-      const sillasPorLado = Math.floor(totalSillas / 4);
-      const resto = totalSillas % 4;
-      const sArr  = sillasPorLado + (resto > 0 ? 1 : 0);
-      const sAbj  = sillasPorLado + (resto > 1 ? 1 : 0);
-      const sIzq  = sillasPorLado + (resto > 2 ? 1 : 0);
-      const sDer  = sillasPorLado;
+      const por4 = Math.floor(totalSillas / 4);
+      const r    = totalSillas % 4;
+      const sArr = por4 + (r > 0 ? 1 : 0);
+      const sAbj = por4 + (r > 1 ? 1 : 0);
+      const sIzq = por4 + (r > 2 ? 1 : 0);
+      const sDer = por4;
+      const startArr = 1, startIzq = startArr + sArr, startDer = startIzq + sIzq, startAbj = startDer + sDer;
 
-      let counter = 1;
-
-      const SillasLateral = ({ count, start }) => (
-        <div className="flex flex-col gap-1">
-          {Array.from({ length: count }, (_, i) => {
-            const seatId = String(start + i);
-            const tipo = getSeatType(seatId, 0);
-            return (
-              <button key={seatId}
-                onClick={() => handleSeatClick(seatId, 0)}
-                className={clsx('seat', SEAT_TYPES[tipo].class)}
-                title={`Asiento ${seatId}`}
-                disabled={tipo === 'occupied' || tipo === 'blocked'}
-              >
-                <span className="text-xs">{seatId}</span>
-              </button>
-            );
-          })}
-        </div>
-      );
-
-      const SillasHorizontal = ({ count, start }) => (
+      const SillasH = ({ count, start }) => (
         <div className="flex gap-1 justify-center">
           {Array.from({ length: count }, (_, i) => {
             const seatId = String(start + i);
-            const tipo = getSeatType(seatId, 0);
+            const tipo = getSeatType(seatId);
             return (
-              <button key={seatId}
-                onClick={() => handleSeatClick(seatId, 0)}
+              <button key={seatId} onClick={() => handleSeatClick(seatId)}
                 className={clsx('seat', SEAT_TYPES[tipo].class)}
                 title={`Asiento ${seatId}`}
-                disabled={tipo === 'occupied' || tipo === 'blocked'}
-              >
+                disabled={tipo === 'occupied' || tipo === 'blocked'}>
                 <span className="text-xs">{seatId}</span>
               </button>
             );
@@ -227,22 +171,32 @@ export default function SeatSelector({
         </div>
       );
 
-      const startArr = 1;
-      const startIzq = startArr + sArr;
-      const startDer = startIzq + sIzq;
-      const startAbj = startDer + sDer;
+      const SillasV = ({ count, start }) => (
+        <div className="flex flex-col gap-1">
+          {Array.from({ length: count }, (_, i) => {
+            const seatId = String(start + i);
+            const tipo = getSeatType(seatId);
+            return (
+              <button key={seatId} onClick={() => handleSeatClick(seatId)}
+                className={clsx('seat', SEAT_TYPES[tipo].class)}
+                title={`Asiento ${seatId}`}
+                disabled={tipo === 'occupied' || tipo === 'blocked'}>
+                <span className="text-xs">{seatId}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
 
       return (
         <div className="flex flex-col gap-2 items-center">
-          <SillasHorizontal count={sArr} start={startArr} />
+          <SillasH count={sArr} start={startArr} />
           <div className="flex gap-3 items-center">
-            <SillasLateral count={sIzq} start={startIzq} />
-            <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold py-8 px-6 rounded-xl">
-              ESCENARIO
-            </div>
-            <SillasLateral count={sDer} start={startDer} />
+            <SillasV count={sIzq} start={startIzq} />
+            <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold py-8 px-6 rounded-xl">ESCENARIO</div>
+            <SillasV count={sDer} start={startDer} />
           </div>
-          <SillasHorizontal count={sAbj} start={startAbj} />
+          <SillasH count={sAbj} start={startAbj} />
         </div>
       );
     }
@@ -258,7 +212,6 @@ export default function SeatSelector({
         </div>
       </div>
 
-      {/* Leyenda */}
       <div className="flex flex-wrap justify-center gap-4 py-4 border-t border-gray-100">
         {Object.entries(SEAT_TYPES).map(([key, { label, class: cls }]) => (
           <div key={key} className="flex items-center gap-2">
@@ -268,7 +221,6 @@ export default function SeatSelector({
         ))}
       </div>
 
-      {/* Resumen */}
       {seleccionados.length > 0 && (
         <div className="bg-azul/5 border border-azul/15 rounded-2xl p-5">
           <div className="flex items-start gap-3">
@@ -282,8 +234,7 @@ export default function SeatSelector({
                   <span key={s}
                     className="bg-azul text-white text-xs font-heading font-bold px-2.5 py-1 rounded-lg cursor-pointer hover:bg-red-500 transition-colors"
                     onClick={() => setSeleccionados(prev => prev.filter(x => x !== s))}
-                    title="Clic para quitar"
-                  >
+                    title="Clic para quitar">
                     #{s} ✕
                   </span>
                 ))}
