@@ -95,9 +95,8 @@ export default function ObraDetalle() {
                   )}
                   <button
                     onClick={() => {
-                      if (!user) { navigate('/login'); return; }
-                      navigate(`/cartelera/${obraId}/reservar/${f.id}`);
-                    }}
+  navigate(`/cartelera/${obraId}/reservar/${f.id}`);
+}}
                     disabled={f.asientosDisponibles === 0}
                     className="btn-primary w-full text-sm py-2.5"
                   >
