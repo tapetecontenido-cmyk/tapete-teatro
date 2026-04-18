@@ -1,49 +1,44 @@
 // src/components/public/SeatSelector.jsx
-// Selector interactivo de asientos — Tapete Teatro
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { clsx } from 'clsx';
 import { Info } from 'lucide-react';
 
-// ── Tipos de asiento ───────────────────────────────────────────────────
 const SEAT_TYPES = {
-  vip:      { label: 'VIP',       class: 'seat-vip',      available: true  },
-  general:  { label: 'General',   class: 'seat-general',  available: true  },
-  selected: { label: 'Selec.',    class: 'seat-selected', available: false },
-  occupied: { label: 'Ocupado',   class: 'seat-occupied', available: false },
-  blocked:  { label: 'No disp.',  class: 'seat-blocked',  available: false },
+  vip:      { label: 'VIP',      class: 'seat-vip' },
+  general:  { label: 'General',  class: 'seat-general' },
+  selected: { label: 'Selec.',   class: 'seat-selected' },
+  occupied: { label: 'Ocupado',  class: 'seat-occupied' },
+  blocked:  { label: 'No disp.', class: 'seat-blocked' },
 };
 
 export default function SeatSelector({
-  funcionId,      // ID de la función en Firestore
-  layoutConfig,   // config del croquis: { filas, columnas, filaNames, vipRange, pasilloCol, inhabilitados }
+  funcionId,
+  layoutConfig,
   precioVip,
   precioGeneral,
-  onChange,       // (seatsSeleccionados) => void
+  onChange,
   maxSeats = 6,
 }) {
   const [asientosOcupados, setAsientosOcupados] = useState(new Set());
   const [seleccionados,    setSeleccionados]    = useState([]);
-  const [hoveredSeat,      setHoveredSeat]      = useState(null);
 
-// ── Suscribirse a asientos ocupados en tiempo real ─────────────────
   useEffect(() => {
     if (!funcionId) return;
     const ref = doc(db, 'asientosOcupados', funcionId);
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        const todos = [
-          ...(data.ocupados || []),
+        setAsientosOcupados(new Set([
+          ...(data.ocupados  || []),
           ...(data.reservados || []),
-        ];
-        setAsientosOcupados(new Set(todos));
+        ]));
       }
     });
     return unsub;
   }, [funcionId]);
-  // ── Notificar cambios hacia afuera ─────────────────────────────────
+
   useEffect(() => {
     onChange?.(seleccionados);
   }, [seleccionados]);
@@ -51,132 +46,215 @@ export default function SeatSelector({
   if (!layoutConfig) return null;
 
   const {
-    filas         = 8,
-    columnas      = 12,
-    filaNames     = [],
-    vipFilas      = [],    // ['A', 'B']
-    pasilloCol    = 6,
-    inhabilitados = [],    // ['A3', 'B7', ...]
+    totalSillas       = 30,
+    filas             = 5,
+    posicionEscenario = 'arriba',
+    vipFilas          = [],
+    inhabilitados     = [],
   } = layoutConfig;
 
-  // ── Determinar tipo de asiento ─────────────────────────────────────
-  const getSeatType = (fila, col) => {
-    const seatId = `${fila}${col}`;
-    if (asientosOcupados.has(seatId)) return 'occupied';
+  const colsPorFila = Math.ceil(totalSillas / filas);
+
+  // Numeración global: asiento 1, 2, 3...
+  const getSeatId = (filaIdx, colIdx) => {
+    return String(filaIdx * colsPorFila + colIdx + 1);
+  };
+
+  const getSeatType = (seatId, filaIdx) => {
+    if (asientosOcupados.has(seatId))  return 'occupied';
     if (inhabilitados.includes(seatId)) return 'blocked';
     if (seleccionados.includes(seatId)) return 'selected';
-    if (vipFilas.includes(fila)) return 'vip';
+    // VIP por fila (usando letra de fila para compatibilidad)
+    const filaLetra = String.fromCharCode(65 + filaIdx);
+    if (vipFilas.includes(filaLetra))   return 'vip';
     return 'general';
   };
 
-  // ── Click en asiento ───────────────────────────────────────────────
-  const handleSeatClick = (fila, col) => {
-    const seatId = `${fila}${col}`;
-    const tipo   = getSeatType(fila, col);
-
+  const handleSeatClick = (seatId, filaIdx) => {
+    const tipo = getSeatType(seatId, filaIdx);
     if (tipo === 'occupied' || tipo === 'blocked') return;
-
     setSeleccionados(prev => {
-      if (prev.includes(seatId)) {
-        return prev.filter(s => s !== seatId);
-      }
-      if (prev.length >= maxSeats) return prev; // límite
+      if (prev.includes(seatId)) return prev.filter(s => s !== seatId);
+      if (prev.length >= maxSeats) return prev;
       return [...prev, seatId];
     });
   };
 
-  // ── Calcular precio total ──────────────────────────────────────────
   const calcTotal = () => {
     let total = 0;
     for (const seatId of seleccionados) {
-      const fila = seatId[0];
-      total += vipFilas.includes(fila) ? precioVip : precioGeneral;
+      // Determinar si es VIP por el número del asiento
+      const num  = Number(seatId);
+      const fi   = Math.floor((num - 1) / colsPorFila);
+      const letra = String.fromCharCode(65 + fi);
+      total += vipFilas.includes(letra) ? precioVip : precioGeneral;
     }
     return total;
   };
 
-  const filaLabels = filaNames.length > 0
-    ? filaNames
-    : Array.from({ length: filas }, (_, i) => String.fromCharCode(65 + i));
+  // Genera una fila de asientos
+  const FilaAsientos = ({ filaIdx, numCols, offsetNum = 0 }) => (
+    <div className="flex gap-1 flex-wrap justify-center">
+      {Array.from({ length: numCols }, (_, ci) => {
+        const seatId = String(filaIdx * colsPorFila + ci + 1 + offsetNum);
+        const tipo   = getSeatType(seatId, filaIdx);
+        return (
+          <button key={seatId}
+            onClick={() => handleSeatClick(seatId, filaIdx)}
+            className={clsx('seat', SEAT_TYPES[tipo].class)}
+            title={`Asiento ${seatId}`}
+            disabled={tipo === 'occupied' || tipo === 'blocked'}
+          >
+            <span className="text-xs">{seatId}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const Escenario = ({ className = 'w-full max-w-sm mx-auto' }) => (
+    <div className={clsx('bg-gradient-brand rounded-2xl py-3 px-6 text-center text-white font-heading font-bold text-sm tracking-widest uppercase shadow-brand-lg', className)}>
+      ESCENARIO
+    </div>
+  );
+
+  // Render según posición del escenario
+  const renderCroquis = () => {
+    if (posicionEscenario === 'arriba') {
+      return (
+        <div className="flex flex-col gap-3 items-center">
+          <Escenario />
+          <div className="w-full h-px bg-gradient-brand opacity-20" />
+          <div className="flex flex-col gap-1.5 w-full">
+            {Array.from({ length: filas }, (_, fi) => (
+              <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (posicionEscenario === 'abajo') {
+      return (
+        <div className="flex flex-col gap-3 items-center">
+          <div className="flex flex-col gap-1.5 w-full">
+            {Array.from({ length: filas }, (_, fi) => (
+              <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />
+            ))}
+          </div>
+          <div className="w-full h-px bg-gradient-brand opacity-20" />
+          <Escenario />
+        </div>
+      );
+    }
+
+    if (posicionEscenario === 'izquierda') {
+      return (
+        <div className="flex gap-4 items-center">
+          <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold rounded-xl px-3 py-8 flex-shrink-0 writing-mode-vertical">
+            ESCENARIO
+          </div>
+          <div className="flex flex-col gap-1.5 flex-1">
+            {Array.from({ length: filas }, (_, fi) => (
+              <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (posicionEscenario === 'derecha') {
+      return (
+        <div className="flex gap-4 items-center">
+          <div className="flex flex-col gap-1.5 flex-1">
+            {Array.from({ length: filas }, (_, fi) => (
+              <FilaAsientos key={fi} filaIdx={fi} numCols={colsPorFila} />
+            ))}
+          </div>
+          <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold rounded-xl px-3 py-8 flex-shrink-0">
+            ESCENARIO
+          </div>
+        </div>
+      );
+    }
+
+    // Centro — sillas en 4 lados
+    if (posicionEscenario === 'centro') {
+      const sillasPorLado = Math.floor(totalSillas / 4);
+      const resto = totalSillas % 4;
+      const sArr  = sillasPorLado + (resto > 0 ? 1 : 0);
+      const sAbj  = sillasPorLado + (resto > 1 ? 1 : 0);
+      const sIzq  = sillasPorLado + (resto > 2 ? 1 : 0);
+      const sDer  = sillasPorLado;
+
+      let counter = 1;
+
+      const SillasLateral = ({ count, start }) => (
+        <div className="flex flex-col gap-1">
+          {Array.from({ length: count }, (_, i) => {
+            const seatId = String(start + i);
+            const tipo = getSeatType(seatId, 0);
+            return (
+              <button key={seatId}
+                onClick={() => handleSeatClick(seatId, 0)}
+                className={clsx('seat', SEAT_TYPES[tipo].class)}
+                title={`Asiento ${seatId}`}
+                disabled={tipo === 'occupied' || tipo === 'blocked'}
+              >
+                <span className="text-xs">{seatId}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+
+      const SillasHorizontal = ({ count, start }) => (
+        <div className="flex gap-1 justify-center">
+          {Array.from({ length: count }, (_, i) => {
+            const seatId = String(start + i);
+            const tipo = getSeatType(seatId, 0);
+            return (
+              <button key={seatId}
+                onClick={() => handleSeatClick(seatId, 0)}
+                className={clsx('seat', SEAT_TYPES[tipo].class)}
+                title={`Asiento ${seatId}`}
+                disabled={tipo === 'occupied' || tipo === 'blocked'}
+              >
+                <span className="text-xs">{seatId}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+
+      const startArr = 1;
+      const startIzq = startArr + sArr;
+      const startDer = startIzq + sIzq;
+      const startAbj = startDer + sDer;
+
+      return (
+        <div className="flex flex-col gap-2 items-center">
+          <SillasHorizontal count={sArr} start={startArr} />
+          <div className="flex gap-3 items-center">
+            <SillasLateral count={sIzq} start={startIzq} />
+            <div className="bg-gradient-brand text-white text-center text-xs font-heading font-bold py-8 px-6 rounded-xl">
+              ESCENARIO
+            </div>
+            <SillasLateral count={sDer} start={startDer} />
+          </div>
+          <SillasHorizontal count={sAbj} start={startAbj} />
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="space-y-6">
-
-      {/* Escenario */}
-      <div className="relative">
-        <div className="w-full max-w-md mx-auto bg-gradient-brand rounded-2xl py-3 px-6 text-center
-                        text-white font-heading font-bold text-sm tracking-widest uppercase
-                        shadow-brand-lg">
-          ESCENARIO
-        </div>
-        <div className="w-3/4 mx-auto h-2 bg-gradient-brand opacity-20 rounded-b-full" />
-      </div>
-
-      {/* Grid de asientos */}
       <div className="overflow-x-auto">
-        <div className="inline-block min-w-full">
-          <div className="flex flex-col gap-1.5 items-center">
-            {filaLabels.map((filaLabel, filaIdx) => (
-              <div key={filaIdx} className="flex items-center gap-1.5">
-                {/* Etiqueta de fila */}
-                <span className="w-6 text-center text-xs font-heading font-bold text-gray-400 flex-shrink-0">
-                  {filaLabel}
-                </span>
-
-                {/* Asientos izquierda */}
-                <div className="flex gap-1">
-                  {Array.from({ length: pasilloCol }, (_, colIdx) => {
-                    const col    = colIdx + 1;
-                    const seatId = `${filaLabel}${col}`;
-                    const tipo   = getSeatType(filaLabel, col);
-                    return (
-                      <button
-                        key={seatId}
-                        onClick={() => handleSeatClick(filaLabel, col)}
-                        onMouseEnter={() => setHoveredSeat(seatId)}
-                        onMouseLeave={() => setHoveredSeat(null)}
-                        className={clsx('seat', SEAT_TYPES[tipo].class)}
-                        title={`${seatId} — ${SEAT_TYPES[tipo].label}`}
-                        disabled={tipo === 'occupied' || tipo === 'blocked'}
-                      >
-                        {hoveredSeat === seatId ? col : ''}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Pasillo */}
-                <div className="w-6 flex-shrink-0" />
-
-                {/* Asientos derecha */}
-                <div className="flex gap-1">
-                  {Array.from({ length: columnas - pasilloCol }, (_, colIdx) => {
-                    const col    = colIdx + pasilloCol + 1;
-                    const seatId = `${filaLabel}${col}`;
-                    const tipo   = getSeatType(filaLabel, col);
-                    return (
-                      <button
-                        key={seatId}
-                        onClick={() => handleSeatClick(filaLabel, col)}
-                        onMouseEnter={() => setHoveredSeat(seatId)}
-                        onMouseLeave={() => setHoveredSeat(null)}
-                        className={clsx('seat', SEAT_TYPES[tipo].class)}
-                        title={`${seatId} — ${SEAT_TYPES[tipo].label}`}
-                        disabled={tipo === 'occupied' || tipo === 'blocked'}
-                      >
-                        {hoveredSeat === seatId ? col : ''}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Etiqueta derecha */}
-                <span className="w-6 text-center text-xs font-heading font-bold text-gray-400 flex-shrink-0">
-                  {filaLabel}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="min-w-full flex justify-center">
+          {renderCroquis()}
         </div>
       </div>
 
@@ -184,13 +262,13 @@ export default function SeatSelector({
       <div className="flex flex-wrap justify-center gap-4 py-4 border-t border-gray-100">
         {Object.entries(SEAT_TYPES).map(([key, { label, class: cls }]) => (
           <div key={key} className="flex items-center gap-2">
-            <div className={clsx('w-5 h-5 rounded', cls, 'border-2')} />
+            <div className={clsx('w-5 h-5 rounded seat', cls)} />
             <span className="text-xs text-gray-500 font-heading">{label}</span>
           </div>
         ))}
       </div>
 
-      {/* Resumen de selección */}
+      {/* Resumen */}
       {seleccionados.length > 0 && (
         <div className="bg-azul/5 border border-azul/15 rounded-2xl p-5">
           <div className="flex items-start gap-3">
@@ -202,12 +280,11 @@ export default function SeatSelector({
               <div className="flex flex-wrap gap-2 mb-3">
                 {seleccionados.map(s => (
                   <span key={s}
-                    className="bg-azul text-white text-xs font-heading font-bold
-                               px-2.5 py-1 rounded-lg cursor-pointer hover:bg-red-500 transition-colors"
+                    className="bg-azul text-white text-xs font-heading font-bold px-2.5 py-1 rounded-lg cursor-pointer hover:bg-red-500 transition-colors"
                     onClick={() => setSeleccionados(prev => prev.filter(x => x !== s))}
                     title="Clic para quitar"
                   >
-                    {s} ✕
+                    #{s} ✕
                   </span>
                 ))}
               </div>

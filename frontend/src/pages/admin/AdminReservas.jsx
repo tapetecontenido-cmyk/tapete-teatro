@@ -68,13 +68,33 @@ function ReservaModal({ reserva, onClose, onConfirmar, onRechazar }) {
               <div><span className="text-gray-600 font-heading">Referencia:</span> <strong className="text-gray-900">{reserva.referencia}</strong></div>
             </div>
             <div className="mt-3">
-              <span className="text-gray-400 text-sm">Asientos: </span>
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {reserva.asientos?.map(s => (
-                  <span key={s} className="badge bg-azul/10 text-azul">{s}</span>
-                ))}
-              </div>
-            </div>
+  <span className="text-gray-400 text-sm">Asientos: </span>
+  <div className="flex flex-wrap gap-1.5 mt-1">
+    {reserva.asientos?.map(s => (
+      <span key={s} className="badge bg-azul/10 text-azul">#{s}</span>
+    ))}
+  </div>
+  {reserva.funcionId && reserva.asientos?.length > 0 && (
+    <button
+      onClick={async () => {
+        try {
+          const { updateDoc, doc, arrayRemove } = await import('firebase/firestore');
+          const { db } = await import('../../services/firebase');
+          await updateDoc(doc(db, 'asientosOcupados', reserva.funcionId), {
+            ocupados:   arrayRemove(...reserva.asientos),
+            reservados: arrayRemove(...reserva.asientos),
+          });
+          toast.success('Asientos liberados correctamente');
+        } catch (err) {
+          toast.error('Error al liberar: ' + err.message);
+        }
+      }}
+      className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-green-300 text-green-600 text-xs font-heading font-bold hover:bg-green-50 transition-colors"
+    >
+      🔓 Liberar estos asientos
+    </button>
+  )}
+</div>
           </div>
 
           <div>
