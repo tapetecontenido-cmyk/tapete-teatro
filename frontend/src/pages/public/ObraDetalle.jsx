@@ -57,9 +57,17 @@ export default function ObraDetalle() {
                 {obra.reparto && <div className="col-span-2"><span className="text-white/60">Reparto:</span><p className="font-heading font-bold">{obra.reparto}</p></div>}
               </div>
               <div className="mt-6 flex gap-4">
-                <div className="bg-white/15 rounded-xl p-4"><p className="text-white/60 text-xs">Precio General</p><p className="font-display text-2xl">${obra.precioGeneral} USD</p></div>
-                {obra.precioVip && <div className="bg-yellow-400/20 rounded-xl p-4"><p className="text-white/60 text-xs">Precio VIP</p><p className="font-display text-2xl">${obra.precioVip} USD</p></div>}
-              </div>
+  <div className="bg-white/15 rounded-xl p-4">
+    <p className="text-white/60 text-xs">Precio General</p>
+    <p className="text-2xl" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${obra.precioGeneral} USD</p>
+  </div>
+  {obra.precioVip && (
+    <div className="bg-yellow-400/20 rounded-xl p-4">
+      <p className="text-white/60 text-xs">Precio VIP</p>
+      <p className="text-2xl" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${obra.precioVip} USD</p>
+    </div>
+  )}
+</div>
             </div>
           </div>
         </div>
