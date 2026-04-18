@@ -214,6 +214,44 @@ export default function AdminReservas() {
   const [busqueda,      setBusqueda]      = useState('');
   const [reservaModal,  setReservaModal]  = useState(null);
   const [cargando,      setCargando]      = useState(true);
+  const exportarExcel = () => {
+  const fechaHoy = new Date().toLocaleDateString('es-VE').replace(/\//g, '-');
+
+  const filas = [
+    ['ID', 'Fecha', 'Nombre', 'Cédula', 'Teléfono', 'Email', 'Obra', 'Asientos', 'Total USD', 'Método', 'Referencia', 'Estado', 'Nota Admin']
+  ];
+
+  reservas.forEach(r => {
+    filas.push([
+      r.id.slice(-8).toUpperCase(),
+      r.creadoEn ? (r.creadoEn.toDate?.() || new Date()).toLocaleString('es-VE') : '',
+      r.comprador?.nombre || '',
+      r.comprador?.cedula || '',
+      r.comprador?.telefono || '',
+      r.comprador?.email || '',
+      r.obraNombre || '',
+      r.asientos?.join(', ') || '',
+      r.total || 0,
+      r.metodoPago?.replace('_', ' ') || '',
+      r.referencia || '',
+      r.estado || '',
+      r.notaAdmin || '',
+    ]);
+  });
+
+  const csv = filas.map(fila =>
+    fila.map(celda => '"' + String(celda).replace(/"/g, '""') + '"').join(';')
+  ).join('\n');
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href     = url;
+  link.download = 'reservas-tapete-teatro-' + fechaHoy + '.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+  toast.success('Excel descargado');
+};
 
   // ── Suscripción en tiempo real ─────────────────────────────────────
   useEffect(() => {
