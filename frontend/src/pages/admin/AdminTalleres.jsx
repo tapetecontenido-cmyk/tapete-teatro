@@ -118,17 +118,39 @@ export default function AdminTalleres() {
             ? <p className="text-gray-400 text-sm font-heading">Sin inscripciones</p>
             : <div className="space-y-3">
                 {inscripciones.map(i => (
-                  <div key={i.id} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50">
-                    <div className="flex-1">
-                      <p className="font-heading font-bold text-sm text-gray-900">{i.comprador?.nombre}</p>
-                      <p className="text-xs text-gray-400">{i.comprador?.email} · {i.comprador?.cedula}</p>
-                    </div>
-                    <span className={`badge ${i.estado === 'confirmada' ? 'badge-confirmed' : i.estado === 'cancelada' ? 'badge-cancelled' : 'badge-pending'}`}>{i.estado}</span>
-                    {i.estado === 'pendiente' && (
-                      <button onClick={() => confirmarInscripcion(i.id)} className="btn-primary text-xs py-1.5 px-3">Confirmar</button>
-                    )}
-                  </div>
-                ))}
+  <div key={i.id} className="p-4 rounded-xl bg-gray-50 space-y-2">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="font-heading font-bold text-sm text-gray-900">{i.comprador?.nombre}</p>
+        <p className="text-xs text-gray-400">{i.comprador?.email} · {i.comprador?.cedula}</p>
+      </div>
+      <span className={`badge ${i.estado === 'confirmada' ? 'badge-confirmed' : i.estado === 'cancelada' ? 'badge-cancelled' : 'badge-pending'}`}>{i.estado}</span>
+    </div>
+    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+      <p><span className="font-heading font-bold">Método:</span> {i.metodoPago?.replace('_', ' ')}</p>
+      <p><span className="font-heading font-bold">Referencia:</span> {i.referencia}</p>
+      <p><span className="font-heading font-bold">Teléfono:</span> {i.comprador?.telefono}</p>
+    </div>
+    {i.comprobanteUrl && (
+      <a href={i.comprobanteUrl} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-xs text-azul hover:text-azul-dark font-heading font-bold">
+        Ver comprobante →
+      </a>
+    )}
+    {i.estado === 'pendiente' && (
+      <div className="flex gap-2 pt-1">
+        <button onClick={() => confirmarInscripcion(i.id)} className="btn-primary text-xs py-1.5 px-3">Confirmar</button>
+        <button onClick={async () => {
+          await updateDoc(doc(db, 'inscripciones', i.id), { estado: 'cancelada' });
+          setInscripciones(prev => prev.map(x => x.id === i.id ? { ...x, estado: 'cancelada' } : x));
+          toast.success('Inscripción rechazada');
+        }} className="text-xs py-1.5 px-3 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold">
+          Rechazar
+        </button>
+      </div>
+    )}
+  </div>
+))}
               </div>
           }
         </div>
