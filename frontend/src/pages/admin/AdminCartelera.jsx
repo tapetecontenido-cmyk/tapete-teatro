@@ -2,12 +2,12 @@
 // Gestión de cartelera — Panel Admin
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, addDoc } from 'firebase/firestore';
-import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../services/firebase';
+import { db } from '../../services/firebase';
 import { Plus, Edit2, Trash2, X, Upload, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 import DOMPurify from 'dompurify';
+import { subirArchivo } from '../../utils/subirArchivo';
 
 const GENEROS = ['Drama', 'Comedia', 'Musical', 'Infantil', 'Danza', 'Monólogo', 'Experimental'];
 
@@ -35,10 +35,8 @@ export default function AdminCartelera() {
     try {
       let posterUrl = editando?.posterUrl || '';
       if (poster) {
-        const ref = sRef(storage, `posters/${Date.now()}_${poster.name}`);
-        await uploadBytes(ref, poster);
-        posterUrl = await getDownloadURL(ref);
-      }
+  posterUrl = await subirArchivo(poster, 'posters');
+}
 
       const data = {
         nombre:        DOMPurify.sanitize(form.nombre.trim()),
