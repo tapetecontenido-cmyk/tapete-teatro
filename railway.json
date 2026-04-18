@@ -1,11 +1,9 @@
 {
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "npm install",
-    "watchPatterns": ["backend/**"]
+    "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "node server.js",
+    "startCommand": "cd backend && node server.js",
     "restartPolicyType": "ON_FAILURE"
   }
 }
