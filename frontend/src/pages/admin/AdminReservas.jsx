@@ -1,7 +1,5 @@
 // src/pages/admin/AdminReservas.jsx
 // Gestión de reservas — Panel Admin Tapete Teatro
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import {
   collection, query, orderBy, onSnapshot,
