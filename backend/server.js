@@ -121,7 +121,29 @@ const soloAdmin = (req, res, next) => {
 };
 
 // ── RUTAS ──────────────────────────────────────────────────────────────
+// ── Tasa BCV ───────────────────────────────────────────────────────────
+app.get('/api/tasa-bcv', async (req, res) => {
+  const fuentes = [
+    'https://pydolarve.org/api/v1/dollar?monitor=enparalelov2',
+    'https://ve.dolarapi.com/v1/dolares/oficial',
+  ];
 
+  for (const url of fuentes) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+      const data = await response.json();
+
+      if (data.price)   return res.json({ tasa: parseFloat(data.price) });
+      if (data.promedio) return res.json({ tasa: parseFloat(data.promedio) });
+      if (data.tasa)    return res.json({ tasa: parseFloat(data.tasa) });
+    } catch {
+      continue;
+    }
+  }
+
+  res.status(503).json({ error: 'No se pudo obtener la tasa' });
+});
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
