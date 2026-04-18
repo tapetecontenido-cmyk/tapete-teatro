@@ -221,25 +221,49 @@ function CarruselObras({ obras }) {
 // ── Icono de máscara de teatro SVG ─────────────────────────────────────
 function MascaraTeatro() {
   return (
-    <svg viewBox="0 0 40 40" className="w-8 h-8" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Máscara feliz */}
-      <ellipse cx="13" cy="18" rx="9" ry="11" fill="url(#grad1)" opacity="0.9"/>
-      <path d="M7 21 Q13 26 19 21" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-      <circle cx="10" cy="16" r="1.5" fill="white" opacity="0.8"/>
-      <circle cx="16" cy="16" r="1.5" fill="white" opacity="0.8"/>
-      {/* Máscara triste */}
-      <ellipse cx="27" cy="22" rx="9" ry="11" fill="url(#grad2)" opacity="0.9"/>
-      <path d="M21 27 Q27 23 33 27" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-      <circle cx="24" cy="20" r="1.5" fill="white" opacity="0.8"/>
-      <circle cx="30" cy="20" r="1.5" fill="white" opacity="0.8"/>
+    <svg viewBox="0 0 48 32" className="w-10 h-7" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Máscara feliz (izquierda) */}
+      <path d="M2 8 Q2 2 9 2 Q16 2 16 8 L16 18 Q16 26 9 26 Q2 26 2 18 Z"
+            fill="url(#mf)" stroke="#2222AA" strokeWidth="0.8"/>
+      {/* Ojos máscara feliz */}
+      <ellipse cx="6.5" cy="11" rx="1.5" ry="2" fill="#1a1a6e"/>
+      <ellipse cx="11.5" cy="11" rx="1.5" ry="2" fill="#1a1a6e"/>
+      {/* Sonrisa máscara feliz */}
+      <path d="M5.5 17 Q9 21 12.5 17" stroke="#1a1a6e" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+      {/* Agujeros boca máscara feliz */}
+      <ellipse cx="9" cy="18.5" rx="2" ry="1" fill="#1a1a6e" opacity="0.3"/>
+      {/* Cinta máscara feliz */}
+      <path d="M2 13 L0 13" stroke="#2222AA" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M16 13 L18 11 L20 13" stroke="#2222AA" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      {/* Decoración máscara feliz */}
+      <path d="M4 5 Q9 3 14 5" stroke="#5555DD" strokeWidth="0.6" fill="none" opacity="0.6"/>
+
+      {/* Máscara triste (derecha) */}
+      <path d="M28 4 Q28 28 39 28 Q46 28 46 20 L46 12 Q46 4 39 4 Q32 4 28 4 Z"
+            fill="url(#mt)" stroke="#1a7ab5" strokeWidth="0.8"/>
+      {/* Ojos máscara triste */}
+      <ellipse cx="33" cy="13" rx="1.5" ry="2" fill="#0d4f7a"/>
+      <ellipse cx="41" cy="13" rx="1.5" ry="2" fill="#0d4f7a"/>
+      {/* Cejas tristes */}
+      <path d="M31 10 Q33 8.5 35 10" stroke="#0d4f7a" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <path d="M39 10 Q41 8.5 43 10" stroke="#0d4f7a" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      {/* Boca triste */}
+      <path d="M32 21 Q37 17.5 42 21" stroke="#0d4f7a" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+      {/* Agujero boca triste */}
+      <ellipse cx="37" cy="20" rx="2" ry="1" fill="#0d4f7a" opacity="0.3"/>
+      {/* Cinta máscara triste */}
+      <path d="M46 16 L48 16" stroke="#1a7ab5" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* Decoración máscara triste */}
+      <path d="M30 7 Q37 5 44 7" stroke="#4ab0e8" strokeWidth="0.6" fill="none" opacity="0.6"/>
+
       <defs>
-        <linearGradient id="grad1" x1="4" y1="7" x2="22" y2="29" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#3333CC"/>
-          <stop offset="1" stopColor="#299FE3"/>
+        <linearGradient id="mf" x1="2" y1="2" x2="16" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#4444DD"/>
+          <stop offset="1" stopColor="#3333AA"/>
         </linearGradient>
-        <linearGradient id="grad2" x1="18" y1="11" x2="36" y2="33" gradientUnits="userSpaceOnUse">
+        <linearGradient id="mt" x1="28" y1="4" x2="46" y2="28" gradientUnits="userSpaceOnUse">
           <stop stopColor="#299FE3"/>
-          <stop offset="1" stopColor="#3333CC"/>
+          <stop offset="1" stopColor="#1a7ab5"/>
         </linearGradient>
       </defs>
     </svg>
@@ -310,9 +334,14 @@ export default function HomePage() {
 
               <div className="mt-10 flex items-center gap-4 animate-fade-up animate-delay-400">
                 <div className="flex -space-x-2">
-                  {['AC', 'DB'].map((ini, i) => (
-                    <div key={i} className="w-10 h-10 rounded-full bg-gradient-brand border-2 border-white flex items-center justify-center text-white text-xs font-bold">{ini}</div>
-                  ))}
+                  {[
+  { ini: 'AC', foto: '/antonio.jpg' },
+  { ini: 'DB', foto: '/daifra.jpg' },
+].map(({ ini, foto }, i) => (
+  <div key={i} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
+    <img src={foto} alt={ini} className="w-full h-full object-cover" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML=`<span class="w-full h-full bg-gradient-brand flex items-center justify-center text-white text-xs font-bold">${ini}</span>`; }} />
+  </div>
+))}
                 </div>
                 <div>
                   <p className="text-sm font-heading font-bold text-gray-900">Antonio Cuevas · Daifra Blanco</p>
@@ -332,7 +361,7 @@ export default function HomePage() {
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce cursor-pointer"
              onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}>
           <MascaraTeatro />
-          <span className="text-xs font-heading font-bold tracking-widest uppercase text-azul">¡Reserva ya!</span>
+          <span className="text-xs font-heading font-bold tracking-widest uppercase bg-azul text-white px-3 py-1 rounded-lg">¡Reserva ya!</span>
           <div className="w-px h-8 bg-gradient-brand-v" />
         </div>
       </section>
