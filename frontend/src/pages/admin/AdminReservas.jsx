@@ -154,7 +154,6 @@ function ReservaModal({ reserva, onClose, onConfirmar, onRechazar }) {
   );
 }
 
-// ── Página principal de reservas ───────────────────────────────────────
 export default function AdminReservas() {
   const [reservas,      setReservas]      = useState([]);
   const [filtroEstado,  setFiltroEstado]  = useState('todas');
@@ -162,6 +161,17 @@ export default function AdminReservas() {
   const [reservaModal,  setReservaModal]  = useState(null);
   const [cargando,      setCargando]      = useState(true);
   const [seleccionadas, setSeleccionadas] = useState(new Set());
+  const [verPapelera,   setVerPapelera]   = useState(false);
+  const [papelera,      setPapelera]      = useState([]);
+
+  useEffect(() => {
+    if (!verPapelera) return;
+    const q = query(collection(db, 'papelera'), orderBy('eliminadaEn', 'desc'));
+    const unsub = onSnapshot(q, snap => {
+      setPapelera(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, [verPapelera]);
 
   useEffect(() => {
     const q = query(collection(db, 'reservas'), orderBy('creadoEn', 'desc'));
@@ -171,7 +181,85 @@ export default function AdminReservas() {
     });
     return unsub;
   }, []);
+  const restaurarReserva = async (item) => {
+    try {
+      await addDoc(collection(db, 'reservas'), {
+        ...item,
+        eliminadaEn: null,
+        expiraEn:    null,
+        reservaId:   null,
+      });
+      await deleteDoc(doc(db, 'papelera', item.id));
+      toast.success('Reserva restaurada');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
+  };
 
+  const liberarAsientosPapelera = async (item) => {
+    if (!item.funcionId || !item.asientos?.length) { toast.error('Sin datos de asientos'); return; }
+    try {
+      await updateDoc(doc(db, 'asientosOcupados', item.funcionId), {
+        ocupados:   arrayRemove(...item.asientos),
+        reservados: arrayRemove(...item.asientos),
+      });
+      toast.success('Asientos liberados');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
+  };
+
+  const vaciarPapelera = async () => {
+    if (!confirm('¿Eliminar definitivamente todas las reservas en la papelera?')) return;
+    try {
+      for (const item of papelera) {
+        await deleteDoc(doc(db, 'papelera', item.id));
+      }
+      toast.success('Papelera vaciada');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
+  };
+const restaurarReserva = async (item) => {
+  try {
+    // Restaurar a reservas
+    await addDoc(collection(db, 'reservas'), {
+      ...item,
+      eliminadaEn: null,
+      expiraEn:    null,
+      reservaId:   null,
+    });
+    await deleteDoc(doc(db, 'papelera', item.id));
+    toast.success('Reserva restaurada');
+  } catch (err) {
+    toast.error('Error: ' + err.message);
+  }
+};
+
+const liberarAsientosPapelera = async (item) => {
+  if (!item.funcionId || !item.asientos?.length) { toast.error('Sin datos de asientos'); return; }
+  try {
+    await updateDoc(doc(db, 'asientosOcupados', item.funcionId), {
+      ocupados:   arrayRemove(...item.asientos),
+      reservados: arrayRemove(...item.asientos),
+    });
+    toast.success('Asientos liberados');
+  } catch (err) {
+    toast.error('Error: ' + err.message);
+  }
+};
+
+const vaciarPapelera = async () => {
+  if (!confirm('¿Eliminar definitivamente todas las reservas en la papelera?')) return;
+  try {
+    for (const item of papelera) {
+      await deleteDoc(doc(db, 'papelera', item.id));
+    }
+    toast.success('Papelera vaciada');
+  } catch (err) {
+    toast.error('Error: ' + err.message);
+  }
+};
   // ── Confirmar reserva ──────────────────────────────────────────────
   const confirmarReserva = async (reservaId, nota) => {
     try {
@@ -286,18 +374,29 @@ export default function AdminReservas() {
   };
 
   const eliminarSeleccionadas = async () => {
-    if (seleccionadas.size === 0) { toast.error('Selecciona al menos una reserva'); return; }
-    if (!confirm(`¿Eliminar ${seleccionadas.size} reserva(s)? Esta acción no se puede deshacer.`)) return;
-    try {
-      for (const id of seleccionadas) {
-        await deleteDoc(doc(db, 'reservas', id));
-      }
-      setSeleccionadas(new Set());
-      toast.success('Reservas eliminadas');
-    } catch (err) {
-      toast.error('Error al eliminar: ' + err.message);
+  if (seleccionadas.size === 0) { toast.error('Selecciona al menos una reserva'); return; }
+  if (!confirm(`¿Mover ${seleccionadas.size} reserva(s) a la papelera? Tienes 10 días para recuperarlas.`)) return;
+  try {
+    for (const id of seleccionadas) {
+      const reserva = reservas.find(r => r.id === id);
+      if (!reserva) continue;
+
+      // Mover a papelera en lugar de borrar
+      await addDoc(collection(db, 'papelera'), {
+        ...reserva,
+        eliminadaEn:  serverTimestamp(),
+        expiraEn:     new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        reservaId:    id,
+      });
+
+      await deleteDoc(doc(db, 'reservas', id));
     }
-  };
+    setSeleccionadas(new Set());
+    toast.success('Reservas movidas a la papelera');
+  } catch (err) {
+    toast.error('Error: ' + err.message);
+  }
+};
 
   // ── Filtrar reservas ───────────────────────────────────────────────
   const reservasFiltradas = reservas.filter(r => {
@@ -346,6 +445,22 @@ export default function AdminReservas() {
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-bold bg-green-500 text-white hover:bg-green-600 transition-colors ml-auto">
           ↓ Exportar Excel
         </button>
+        <button
+  onClick={exportarExcel}
+  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-bold bg-green-500 text-white hover:bg-green-600 transition-colors ml-auto"
+>
+  ↓ Exportar Excel
+</button>
+
+<button
+  onClick={() => setVerPapelera(!verPapelera)}
+  className={clsx(
+    'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-bold transition-colors',
+    verPapelera ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+  )}
+>
+  🗑 Papelera {papelera.length > 0 && `(${papelera.length})`}
+</button>
         {seleccionadas.size > 0 && (
           <button onClick={eliminarSeleccionadas}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-bold bg-red-500 text-white hover:bg-red-600 transition-colors">
@@ -447,6 +562,52 @@ export default function AdminReservas() {
           </div>
         )}
       </div>
+
+      {/* Panel papelera */}
+      {verPapelera && (
+        <div className="card p-6 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-heading font-bold text-lg text-gray-900">🗑 Papelera</h2>
+            <div className="flex gap-2">
+              <button onClick={vaciarPapelera}
+                className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold transition-colors">
+                Vaciar papelera
+              </button>
+              <button onClick={() => setVerPapelera(false)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 font-heading font-bold transition-colors">
+                Cerrar
+              </button>
+            </div>
+          </div>
+          {papelera.length === 0 ? (
+            <p className="text-center text-gray-400 text-sm py-6 font-heading">La papelera está vacía</p>
+          ) : (
+            <div className="space-y-3">
+              {papelera.map(item => (
+                <div key={item.id} className="flex items-center gap-4 p-4 rounded-xl bg-orange-50 border border-orange-100">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-heading font-bold text-sm text-gray-900">{item.comprador?.nombre}</p>
+                    <p className="text-xs text-gray-500">{item.obraNombre} · Asientos: {item.asientos?.map(s => '#' + s).join(', ')}</p>
+                    <p className="text-xs text-orange-500 mt-0.5">
+                      Expira: {item.expiraEn?.toDate ? item.expiraEn.toDate().toLocaleDateString('es-VE') : '—'}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => liberarAsientosPapelera(item)}
+                      className="text-xs px-2.5 py-1.5 rounded-lg border border-green-300 text-green-600 hover:bg-green-50 font-heading font-bold transition-colors">
+                      🔓 Liberar
+                    </button>
+                    <button onClick={() => restaurarReserva(item)}
+                      className="text-xs px-2.5 py-1.5 rounded-lg border border-azul/30 text-azul hover:bg-azul/5 font-heading font-bold transition-colors">
+                      ↩ Restaurar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {reservaModal && (
         <ReservaModal
