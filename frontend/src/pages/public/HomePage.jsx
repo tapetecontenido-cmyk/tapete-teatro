@@ -176,6 +176,517 @@ function NoticiaCard({ noticia }) {
     </Link>
   );
 }
+// ── Carrusel de obras ──────────────────────────────────────────────────
+function CarruselObras({ obras }) {
+  const [indice, setIndice] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (obras.length === 0) return;
+    const intervalo = setInterval(() => {
+      // Desvanecer
+      setVisible(false);
+      setTimeout(() => {
+        setIndice(prev => (prev + 1) % obras.length);
+        setVisible(true);
+      }, 600); // duración del fade
+    }, 5000); // 5 segundos por obra
+    return () => clearInterval(intervalo);
+  }, [obras.length]);
+
+  if (obras.length === 0) {
+    return (
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-brand rounded-3xl opacity-10 transform rotate-3" />
+        <div className="relative bg-gradient-brand rounded-3xl p-1 shadow-brand-lg">
+          <div className="bg-white rounded-[1.4rem] overflow-hidden aspect-[4/5] flex items-center justify-center">
+            <div className="text-center p-8">
+              <div className="w-32 h-32 rounded-full bg-gradient-brand mx-auto mb-6 flex items-center justify-center shadow-brand-lg animate-float">
+                <span className="font-display text-4xl text-white">T</span>
+              </div>
+              <h2 className="font-display text-4xl text-azul">Tapete</h2>
+              <p className="font-heading text-xl text-cyan tracking-widest">Teatro</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const obra = obras[indice];
+
+  return (
+    <div className="relative">
+      <div className="absolute inset-0 bg-gradient-brand rounded-3xl opacity-10 transform rotate-3" />
+      <div className="relative bg-gradient-brand rounded-3xl p-1 shadow-brand-lg">
+        <div className="bg-white rounded-[1.4rem] overflow-hidden aspect-[4/5] relative">
+
+          {/* Imagen con fade */}
+          <div
+            className="absolute inset-0 transition-opacity duration-700"
+            style={{ opacity: visible ? 1 : 0 }}
+          >
+            {obra.posterUrl ? (
+              <img
+                src={obra.posterUrl}
+                alt={obra.nombre}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-brand flex items-center justify-center">
+                <span className="font-display text-6xl text-white">{obra.nombre?.[0]}</span>
+              </div>
+            )}
+            {/* Overlay con info */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-6">
+              <span className="badge bg-white/20 text-white text-xs mb-2 self-start">{obra.genero}</span>
+              <h3 className="font-display text-2xl text-white leading-tight">{obra.nombre}</h3>
+              {obra.proximaFuncion && (
+                <p className="text-white/70 text-xs mt-1 font-heading">
+                  Próxima función disponible
+                </p>
+              )}
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-white font-heading font-bold text-sm">
+                  Desde ${obra.precioGeneral} USD
+                </span>
+                <span className="bg-white/20 text-white text-xs font-heading font-bold px-3 py-1 rounded-full">
+                  {indice + 1} / {obras.length}
+                </span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Puntos indicadores */}
+      {obras.length > 1 && (
+        <div className="flex justify-center gap-2 mt-4">
+          {obras.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setVisible(false); setTimeout(() => { setIndice(i); setVisible(true); }, 300); }}
+              className={clsx(
+                'rounded-full transition-all duration-300',
+                i === indice ? 'w-6 h-2 bg-azul' : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+              )}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Badge flotante */}
+      <div className="absolute -left-6 top-1/4 bg-white rounded-2xl shadow-card-lg px-4 py-3 border border-gray-100">
+        <p className="text-xs text-gray-400 font-heading uppercase tracking-wide">En cartelera</p>
+        <p className="font-heading font-bold text-gray-900 text-sm">{obras.length} obra{obras.length !== 1 ? 's' : ''} disponible{obras.length !== 1 ? 's' : ''}</p>
+      </div>
+    </div>
+  );
+}[{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "17008",
+	"severity": 8,
+	"message": "JSX element 'div' has no corresponding closing tag.",
+	"source": "ts",
+	"startLineNumber": 326,
+	"startColumn": 6,
+	"endLineNumber": 326,
+	"endColumn": 9,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "17008",
+	"severity": 8,
+	"message": "JSX element 'div' has no corresponding closing tag.",
+	"source": "ts",
+	"startLineNumber": 328,
+	"startColumn": 8,
+	"endLineNumber": 328,
+	"endColumn": 11,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "17008",
+	"severity": 8,
+	"message": "JSX element 'div' has no corresponding closing tag.",
+	"source": "ts",
+	"startLineNumber": 329,
+	"startColumn": 10,
+	"endLineNumber": 329,
+	"endColumn": 13,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "17008",
+	"severity": 8,
+	"message": "JSX element 'div' has no corresponding closing tag.",
+	"source": "ts",
+	"startLineNumber": 330,
+	"startColumn": 12,
+	"endLineNumber": 330,
+	"endColumn": 15,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "17008",
+	"severity": 8,
+	"message": "JSX element 'div' has no corresponding closing tag.",
+	"source": "ts",
+	"startLineNumber": 337,
+	"startColumn": 16,
+	"endLineNumber": 337,
+	"endColumn": 19,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "17008",
+	"severity": 8,
+	"message": "JSX element 'span' has no corresponding closing tag.",
+	"source": "ts",
+	"startLineNumber": 338,
+	"startColumn": 18,
+	"endLineNumber": 338,
+	"endColumn": 22,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "'}' expected.",
+	"source": "ts",
+	"startLineNumber": 340,
+	"startColumn": 1,
+	"endLineNumber": 340,
+	"endColumn": 7,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1109",
+	"severity": 8,
+	"message": "Expression expected.",
+	"source": "ts",
+	"startLineNumber": 341,
+	"startColumn": 3,
+	"endLineNumber": 341,
+	"endColumn": 8,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1382",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'>'}` or `&gt;`?",
+	"source": "ts",
+	"startLineNumber": 346,
+	"startColumn": 17,
+	"endLineNumber": 346,
+	"endColumn": 18,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1109",
+	"severity": 8,
+	"message": "Expression expected.",
+	"source": "ts",
+	"startLineNumber": 347,
+	"startColumn": 5,
+	"endLineNumber": 347,
+	"endColumn": 10,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1382",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'>'}` or `&gt;`?",
+	"source": "ts",
+	"startLineNumber": 347,
+	"startColumn": 33,
+	"endLineNumber": 347,
+	"endColumn": 34,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1109",
+	"severity": 8,
+	"message": "Expression expected.",
+	"source": "ts",
+	"startLineNumber": 348,
+	"startColumn": 7,
+	"endLineNumber": 348,
+	"endColumn": 10,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1109",
+	"severity": 8,
+	"message": "Expression expected.",
+	"source": "ts",
+	"startLineNumber": 350,
+	"startColumn": 9,
+	"endLineNumber": 350,
+	"endColumn": 14,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1382",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'>'}` or `&gt;`?",
+	"source": "ts",
+	"startLineNumber": 356,
+	"startColumn": 40,
+	"endLineNumber": 356,
+	"endColumn": 41,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "'}' expected.",
+	"source": "ts",
+	"startLineNumber": 356,
+	"startColumn": 47,
+	"endLineNumber": 356,
+	"endColumn": 48,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 356,
+	"startColumn": 67,
+	"endLineNumber": 356,
+	"endColumn": 68,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1382",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'>'}` or `&gt;`?",
+	"source": "ts",
+	"startLineNumber": 365,
+	"startColumn": 46,
+	"endLineNumber": 365,
+	"endColumn": 47,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "'}' expected.",
+	"source": "ts",
+	"startLineNumber": 365,
+	"startColumn": 53,
+	"endLineNumber": 365,
+	"endColumn": 54,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 365,
+	"startColumn": 73,
+	"endLineNumber": 365,
+	"endColumn": 74,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1382",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'>'}` or `&gt;`?",
+	"source": "ts",
+	"startLineNumber": 374,
+	"startColumn": 46,
+	"endLineNumber": 374,
+	"endColumn": 47,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "'}' expected.",
+	"source": "ts",
+	"startLineNumber": 374,
+	"startColumn": 53,
+	"endLineNumber": 374,
+	"endColumn": 54,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 374,
+	"startColumn": 73,
+	"endLineNumber": 374,
+	"endColumn": 74,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 375,
+	"startColumn": 7,
+	"endLineNumber": 375,
+	"endColumn": 8,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "'}' expected.",
+	"source": "ts",
+	"startLineNumber": 376,
+	"startColumn": 59,
+	"endLineNumber": 376,
+	"endColumn": 60,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 377,
+	"startColumn": 7,
+	"endLineNumber": 377,
+	"endColumn": 8,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "'}' expected.",
+	"source": "ts",
+	"startLineNumber": 378,
+	"startColumn": 27,
+	"endLineNumber": 378,
+	"endColumn": 28,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 379,
+	"startColumn": 7,
+	"endLineNumber": 379,
+	"endColumn": 8,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 380,
+	"startColumn": 5,
+	"endLineNumber": 380,
+	"endColumn": 6,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 382,
+	"startColumn": 3,
+	"endLineNumber": 382,
+	"endColumn": 4,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1381",
+	"severity": 8,
+	"message": "Unexpected token. Did you mean `{'}'}` or `&rbrace;`?",
+	"source": "ts",
+	"startLineNumber": 682,
+	"startColumn": 1,
+	"endLineNumber": 682,
+	"endColumn": 2,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/alo/OneDrive/Documentos/tapete-teatro/frontend/src/pages/public/HomePage.jsx",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "'</' expected.",
+	"source": "ts",
+	"startLineNumber": 682,
+	"startColumn": 3,
+	"endLineNumber": 682,
+	"endColumn": 3,
+	"modelVersionId": 13,
+	"origin": "extHost1"
+}]
 
 // ── Página principal ───────────────────────────────────────────────────
 export default function HomePage() {
