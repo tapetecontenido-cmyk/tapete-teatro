@@ -127,21 +127,29 @@ export default function QuienesSomos() {
             <div className="brand-divider mx-auto mt-3" />
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {/* Directores fijos */}
-            {[
-              { nombre: 'Antonio Cuevas', rol: 'Director y Co-fundador', ig: '@antoniocuevass' },
-              { nombre: 'Daifra Blanco',  rol: 'Directora y Co-fundadora', ig: '@daifrablanco' },
-            ].map(({ nombre, rol, ig }) => (
-              <div key={nombre} className="card p-6 text-center">
-                <div className="w-20 h-20 rounded-full bg-gradient-brand mx-auto mb-4 flex items-center justify-center text-white text-xl font-bold">
-                  {nombre.split(' ').map(n => n[0]).join('')}
-                </div>
-                <h3 className="font-heading font-bold text-gray-900">{nombre}</h3>
-                <p className="text-cyan text-sm font-heading mt-0.5">{rol}</p>
-                <a href={`https://instagram.com/${ig.slice(1)}`} target="_blank" rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-azul text-xs mt-2 block transition-colors">{ig}</a>
-              </div>
-            ))}
+  {/* Directores fijos */}
+  {[
+    { nombre: 'Antonio Cuevas', rol: 'Director y Co-fundador',   ig: '@antoniocuevass', foto: '/antonio.jpg', ini: 'AC' },
+    { nombre: 'Daifra Blanco',  rol: 'Directora y Co-fundadora', ig: '@daifrablanco',   foto: '/daifra.jpg',  ini: 'DB' },
+  ].map(({ nombre, rol, ig, foto, ini }) => (
+    <div key={nombre} className="card p-6 text-center">
+      <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden border-2 border-azul/30">
+        <img src={foto} alt={nombre} className="w-full h-full object-cover"
+          onError={e => {
+            e.target.style.display = 'none';
+            e.target.parentElement.style.background = 'linear-gradient(135deg,#3333CC,#299FE3)';
+            e.target.parentElement.style.display = 'flex';
+            e.target.parentElement.style.alignItems = 'center';
+            e.target.parentElement.style.justifyContent = 'center';
+            e.target.parentElement.innerHTML = `<span style="color:white;font-weight:bold;font-size:1.2rem">${ini}</span>`;
+          }} />
+      </div>
+      <h3 className="font-heading font-bold text-gray-900">{nombre}</h3>
+      <p className="text-cyan text-sm font-heading mt-0.5">{rol}</p>
+      <a href={`https://instagram.com/${ig.slice(1)}`} target="_blank" rel="noopener noreferrer"
+        className="text-gray-400 hover:text-azul text-xs mt-2 block transition-colors">{ig}</a>
+    </div>
+  ))}
             {/* Profesores dinámicos */}
             {profesores.map(p => (
               <div key={p.id} className="card p-6 text-center">
