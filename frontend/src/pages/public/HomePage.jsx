@@ -293,53 +293,10 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Visual derecha */}
-            <div className="hidden lg:block relative animate-fade-up animate-delay-200">
-              {/* Marco decorativo del teatro */}
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-brand rounded-3xl opacity-10 transform rotate-3" />
-                <div className="relative bg-gradient-brand rounded-3xl p-1 shadow-brand-lg">
-                  <div className="bg-white rounded-[1.4rem] overflow-hidden aspect-[4/5]
-                                  flex items-center justify-center relative">
-                    {/* Cortinas decorativas */}
-                    <div className="absolute top-0 left-0 w-24 h-full bg-gradient-to-r from-azul/20 to-transparent" />
-                    <div className="absolute top-0 right-0 w-24 h-full bg-gradient-to-l from-cyan/20 to-transparent" />
-
-                    {/* Símbolo central */}
-                    <div className="text-center p-8 z-10">
-                      <div className="w-32 h-32 rounded-full bg-gradient-brand mx-auto mb-6
-                                      flex items-center justify-center shadow-brand-lg animate-float">
-                        <svg viewBox="0 0 60 60" className="w-16 h-16">
-                          {/* Icono de las máscaras */}
-                          <circle cx="20" cy="25" r="14" fill="white" opacity="0.9"/>
-                          <path d="M14 25 Q14 33 20 33 Q26 33 26 25Z" fill="#3333CC" opacity="0.5"/>
-                          <circle cx="17" cy="22" r="2" fill="#3333CC"/>
-                          <circle cx="23" cy="22" r="2" fill="#3333CC"/>
-                          <circle cx="40" cy="28" r="14" fill="white" opacity="0.9"/>
-                          <path d="M34 28 Q34 20 40 20 Q46 20 46 28Z" fill="#299FE3" opacity="0.5"/>
-                          <circle cx="37" cy="24" r="2" fill="#299FE3"/>
-                          <circle cx="43" cy="24" r="2" fill="#299FE3"/>
-                        </svg>
-                      </div>
-                      <h2 className="font-display text-4xl text-azul">Tapete</h2>
-                      <p className="font-heading text-xl text-cyan tracking-widest">Teatro</p>
-                      <p className="text-gray-400 text-sm mt-3">Escuela · Compañía · Arte</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Badges flotantes */}
-                <div className="absolute -left-6 top-1/4 bg-white rounded-2xl shadow-card-lg px-4 py-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 font-heading uppercase tracking-wide">Próxima función</p>
-                  <p className="font-heading font-bold text-gray-900 text-sm">¡Este fin de semana!</p>
-                </div>
-
-                <div className="absolute -right-6 bottom-1/4 bg-gradient-brand text-white rounded-2xl shadow-brand px-4 py-3">
-                  <p className="text-xs opacity-80 font-heading uppercase tracking-wide">Talleres activos</p>
-                  <p className="font-display text-2xl">Inscríbete</p>
-                </div>
-              </div>
-            </div>
+            {/* Visual derecha — Carrusel de obras */}
+<div className="hidden lg:block relative animate-fade-up animate-delay-200">
+  <CarruselObras obras={obras} />
+</div>
 
           </div>
         </div>

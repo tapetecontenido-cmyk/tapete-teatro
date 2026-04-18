@@ -185,7 +185,6 @@ export default function AdminReservas() {
     return unsub;
   }, []);
 
-  // ── Confirmar reserva ──────────────────────────────────────────────
   const confirmarReserva = async (reservaId, nota) => {
     try {
       await updateDoc(doc(db, 'reservas', reservaId), {
@@ -193,6 +192,18 @@ export default function AdminReservas() {
         notaAdmin:     nota,
         actualizadoEn: serverTimestamp(),
       });
+
+      // Mover asientos de reservados a ocupados
+      const reserva = reservas.find(r => r.id === reservaId);
+      if (reserva?.funcionId && reserva?.asientos) {
+        const asientosRef = doc(db, 'asientosOcupados', reserva.funcionId);
+        try {
+          await updateDoc(asientosRef, {
+            ocupados:   arrayUnion(...reserva.asientos),
+            reservados: arrayRemove(...reserva.asientos),
+          });
+        } catch {}
+      }
 
       // Notificar al cliente
       const reserva = reservas.find(r => r.id === reservaId);
@@ -219,7 +230,6 @@ export default function AdminReservas() {
     }
   };
 
-  // ── Rechazar reserva ───────────────────────────────────────────────
   const rechazarReserva = async (reservaId, nota) => {
     try {
       await updateDoc(doc(db, 'reservas', reservaId), {
@@ -228,7 +238,17 @@ export default function AdminReservas() {
         actualizadoEn: serverTimestamp(),
       });
 
+      // Liberar asientos reservados
       const reserva = reservas.find(r => r.id === reservaId);
+      if (reserva?.funcionId && reserva?.asientos) {
+        const asientosRef = doc(db, 'asientosOcupados', reserva.funcionId);
+        try {
+          await updateDoc(asientosRef, {
+            reservados: arrayRemove(...reserva.asientos),
+          });
+        } catch {}
+      }
+
       if (reserva?.userId) {
         await addDoc(collection(db, 'notificaciones'), {
           userId:   reserva.userId,
@@ -351,12 +371,12 @@ export default function AdminReservas() {
                       #{r.id.slice(-6).toUpperCase()}
                     </td>
                     <td className="px-5 py-3">
-                      <p className="text-sm font-heading font-bold text-gray-900">{r.comprador?.nombre}</p>
-                      <p className="text-xs text-gray-400">{r.comprador?.email}</p>
-                    </td>
-                    <td className="px-5 py-3 hidden md:table-cell text-sm text-gray-600">
-                      {r.obraNombre || '—'}
-                    </td>
+  <p className="text-sm font-heading font-bold text-azul">{r.comprador?.nombre}</p>
+  <p className="text-xs text-gray-700">{r.comprador?.email}</p>
+</td>
+                    <td className="px-5 py-3 hidden md:table-cell text-sm font-heading font-bold text-gray-900">
+  {r.obraNombre || '—'}
+</td>
                     <td className="px-5 py-3 hidden lg:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {r.asientos?.slice(0, 3).map(s => (
@@ -371,9 +391,9 @@ export default function AdminReservas() {
                       ${r.total}
                     </td>
                     <td className="px-5 py-3 text-center hidden sm:table-cell">
-                      <span className="text-xs text-gray-500 capitalize">
-                        {r.metodoPago?.replace('_', ' ')}
-                      </span>
+                      <span className="text-xs font-heading font-bold text-gray-700 capitalize">
+  {r.metodoPago?.replace('_', ' ')}
+</span>
                     </td>
                     <td className="px-5 py-3 text-center">
                       <span className={clsx('badge',

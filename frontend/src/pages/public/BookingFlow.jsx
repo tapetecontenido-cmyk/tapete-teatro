@@ -2,7 +2,7 @@
 // Flujo de compra de entradas — Tapete Teatro (4 pasos)
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
 import { subirArchivo } from '../../utils/subirArchivo';
 import { db, storage } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -187,15 +187,19 @@ export default function BookingFlow() {
       const docRef = await addDoc(collection(db, 'reservas'), reservaData);
       setReservaId(docRef.id);
 
-      // 4. Marcar asientos como reservados (provisional, hasta confirmación)
-      await updateDoc(doc(db, 'asientosOcupados', funcionId), {
-        reservados: arrayUnion(...seatsElegidos),
-      }).catch(() => {
-        // Si no existe, crear el documento
-        return addDoc(collection(db, 'asientosOcupados'), {
-          funcionId, reservados: seatsElegidos, ocupados: []
-        });
-      });
+      // 4. Marcar asientos como reservados en tiempo real
+const asientosRef = doc(db, 'asientosOcupados', funcionId);
+try {
+  await updateDoc(asientosRef, {
+    reservados: arrayUnion(...seatsElegidos),
+  });
+} catch {
+  await setDoc(asientosRef, {
+    funcionId,
+    reservados: seatsElegidos,
+    ocupados: []
+  });
+}
 
       // 5. Verificación automática via backend (opcional, si está activado)
       try {

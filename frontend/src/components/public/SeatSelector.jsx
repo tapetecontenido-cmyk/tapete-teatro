@@ -33,8 +33,13 @@ export default function SeatSelector({
     const ref = doc(db, 'asientosOcupados', funcionId);
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
-        setAsientosOcupados(new Set(snap.data().ocupados || []));
-      }
+  const data = snap.data();
+  const todos = [
+    ...(data.ocupados || []),
+    ...(data.reservados || []),
+  ];
+  setAsientosOcupados(new Set(todos));
+}
     });
     return unsub;
   }, [funcionId]);
