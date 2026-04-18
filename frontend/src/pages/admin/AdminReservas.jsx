@@ -181,6 +181,7 @@ export default function AdminReservas() {
     });
     return unsub;
   }, []);
+
   const restaurarReserva = async (item) => {
     try {
       await addDoc(collection(db, 'reservas'), {
@@ -220,46 +221,6 @@ export default function AdminReservas() {
       toast.error('Error: ' + err.message);
     }
   };
-const restaurarReserva = async (item) => {
-  try {
-    // Restaurar a reservas
-    await addDoc(collection(db, 'reservas'), {
-      ...item,
-      eliminadaEn: null,
-      expiraEn:    null,
-      reservaId:   null,
-    });
-    await deleteDoc(doc(db, 'papelera', item.id));
-    toast.success('Reserva restaurada');
-  } catch (err) {
-    toast.error('Error: ' + err.message);
-  }
-};
-
-const liberarAsientosPapelera = async (item) => {
-  if (!item.funcionId || !item.asientos?.length) { toast.error('Sin datos de asientos'); return; }
-  try {
-    await updateDoc(doc(db, 'asientosOcupados', item.funcionId), {
-      ocupados:   arrayRemove(...item.asientos),
-      reservados: arrayRemove(...item.asientos),
-    });
-    toast.success('Asientos liberados');
-  } catch (err) {
-    toast.error('Error: ' + err.message);
-  }
-};
-
-const vaciarPapelera = async () => {
-  if (!confirm('¿Eliminar definitivamente todas las reservas en la papelera?')) return;
-  try {
-    for (const item of papelera) {
-      await deleteDoc(doc(db, 'papelera', item.id));
-    }
-    toast.success('Papelera vaciada');
-  } catch (err) {
-    toast.error('Error: ' + err.message);
-  }
-};
   // ── Confirmar reserva ──────────────────────────────────────────────
   const confirmarReserva = async (reservaId, nota) => {
     try {
