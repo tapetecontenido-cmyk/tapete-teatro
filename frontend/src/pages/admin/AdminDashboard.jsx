@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import {
   collection, query, where, orderBy, limit, getDocs,
-  onSnapshot, Timestamp
+  onSnapshot, Timestamp, doc, updateDoc, serverTimestamp,
+  addDoc, deleteDoc
 } from 'firebase/firestore';
 import {
   LayoutDashboard, Ticket, Calendar, BookOpen, Newspaper,

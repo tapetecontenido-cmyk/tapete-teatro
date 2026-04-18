@@ -295,6 +295,8 @@ export default function AdminCartelera() {
   const [poster, setPoster] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [mostrarAsientos, setMostrarAsientos] = useState(false);
+  const [verPapeleraObras, setVerPapeleraObras] = useState(false);
+  const [papeleraObras,    setPapeleraObras]    = useState([]);
 
   useEffect(() => {
     const unsub = onSnapshot(query(collection(db, 'obras'), orderBy('creadoEn', 'desc')), snap => {
@@ -302,6 +304,21 @@ export default function AdminCartelera() {
     });
     return unsub;
   }, []);
+  useEffect(() => {
+    const unsub = onSnapshot(query(collection(db, 'obras'), orderBy('creadoEn', 'desc')), snap => {
+      setObras(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!verPapeleraObras) return;
+    const unsub = onSnapshot(
+      query(collection(db, 'papeleraObras'), orderBy('eliminadaEn', 'desc')),
+      snap => setPapeleraObras(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+    return unsub;
+  }, [verPapeleraObras]);
 
   const abrirNuevo = () => {
     setEditando(null);
@@ -342,6 +359,46 @@ export default function AdminCartelera() {
     await updateDoc(doc(db, 'obras', id), { activo: false });
     toast.success('Obra desactivada');
   };
+  const moverAPapelera = async (obra) => {
+    if (!confirm(`¿Mover "${obra.nombre}" a la papelera?`)) return;
+    try {
+      await addDoc(collection(db, 'papeleraObras'), {
+        ...obra,
+        obraId:      obra.id,
+        eliminadaEn: serverTimestamp(),
+        expiraEn:    new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      });
+      await deleteDoc(doc(db, 'obras', obra.id));
+      toast.success('Obra movida a la papelera');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
+  };
+
+  const restaurarObra = async (item) => {
+    try {
+      await addDoc(collection(db, 'obras'), {
+        ...item,
+        eliminadaEn: null,
+        expiraEn:    null,
+        obraId:      null,
+      });
+      await deleteDoc(doc(db, 'papeleraObras', item.id));
+      toast.success('Obra restaurada');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
+  };
+
+  const eliminarDefinitivo = async (item) => {
+    if (!confirm('¿Eliminar definitivamente? Esta acción no se puede deshacer.')) return;
+    try {
+      await deleteDoc(doc(db, 'papeleraObras', item.id));
+      toast.success('Obra eliminada definitivamente');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
+  };
 
   return (
     <div>
@@ -350,7 +407,15 @@ export default function AdminCartelera() {
           <h1 className="font-display text-display-sm text-gray-900">Cartelera</h1>
           <p className="text-gray-500 text-sm mt-1">{obras.length} obras en total</p>
         </div>
-        <button onClick={abrirNuevo} className="btn-primary gap-2"><Plus size={18} /> Nueva obra</button>
+        <div className="flex gap-2">
+  <button onClick={() => setVerPapeleraObras(!verPapeleraObras)}
+    className={clsx('px-4 py-2 rounded-xl text-sm font-heading font-bold transition-colors',
+      verPapeleraObras ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+    )}>
+    🗑 Papelera {papeleraObras.length > 0 && `(${papeleraObras.length})`}
+  </button>
+  <button onClick={abrirNuevo} className="btn-primary gap-2"><Plus size={18} /> Nueva obra</button>
+</div>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -376,15 +441,60 @@ export default function AdminCartelera() {
               <div className="text-xs text-gray-400 mt-1">
                 {obra.layoutConfig?.totalSillas || 0} sillas · Escenario {obra.layoutConfig?.posicionEscenario || 'arriba'}
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-4">
+              <div className="grid grid-cols-3 gap-2 mt-4">
                 <button onClick={() => abrirEditar(obra)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors"><Edit2 size={13} /> Editar</button>
                 <button onClick={() => setModalFunciones(obra)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors"><Calendar size={13} /> Funciones</button>
-                <button onClick={() => handleEliminar(obra.id)} className="col-span-2 flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-red-400 hover:text-red-500 transition-colors"><Trash2 size={13} /> Desactivar</button>
+                <button onClick={() => handleEliminar(obra.id)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-orange-400 hover:text-orange-500 transition-colors">
+                  <Trash2 size={13} /> Desactivar
+                    </button>
+                <button onClick={() => moverAPapelera(obra)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-red-400 hover:text-red-500 transition-colors">
+                  <Trash2 size={13} /> Eliminar
+                    </button>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {verPapeleraObras && (
+  <div className="card p-6 mt-6 mb-6">
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="font-heading font-bold text-lg text-gray-900">🗑 Papelera de obras</h2>
+      <button onClick={() => setVerPapeleraObras(false)}
+        className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 font-heading font-bold">
+        Cerrar
+      </button>
+    </div>
+    {papeleraObras.length === 0 ? (
+      <p className="text-center text-gray-400 text-sm py-6 font-heading">La papelera está vacía</p>
+    ) : (
+      <div className="space-y-3">
+        {papeleraObras.map(item => (
+          <div key={item.id} className="flex items-center gap-4 p-4 rounded-xl bg-orange-50 border border-orange-100">
+            {item.posterUrl && <img src={item.posterUrl} alt={item.nombre} className="w-12 h-16 object-cover rounded-lg flex-shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <p className="font-heading font-bold text-sm text-gray-900">{item.nombre}</p>
+              <p className="text-xs text-gray-500">{item.genero} · ${item.precioGeneral} USD</p>
+              <p className="text-xs text-orange-500 mt-0.5">
+                Expira: {item.expiraEn instanceof Date ? item.expiraEn.toLocaleDateString('es-VE') : '10 días'}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button onClick={() => restaurarObra(item)}
+                className="text-xs px-2.5 py-1.5 rounded-lg border border-azul/30 text-azul hover:bg-azul/5 font-heading font-bold transition-colors">
+                ↩ Restaurar
+              </button>
+              <button onClick={() => eliminarDefinitivo(item)}
+                className="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold transition-colors">
+                🗑 Eliminar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(false)}>
