@@ -131,7 +131,7 @@ export default function TallerDetalle() {
                 <h2 className="font-heading font-bold text-xl text-gray-900 mb-4">Inscribirse — {taller.nombre}</h2>
                 <div className="bg-gradient-brand text-white rounded-xl p-4 text-center mb-5">
                   <p className="text-white/70 text-sm">Total a pagar</p>
-                  <p className="font-display text-3xl">${taller.precio} USD</p>
+                  <p className="text-3xl" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${taller.precio} USD</p>
                 </div>
                 <div className="mb-4">
                   <label className="label-field">Método de pago</label>
