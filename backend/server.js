@@ -124,8 +124,8 @@ const soloAdmin = (req, res, next) => {
 // ── Tasa BCV ───────────────────────────────────────────────────────────
 app.get('/api/tasa-bcv', async (req, res) => {
   const fuentes = [
-    'https://pydolarve.org/api/v1/dollar?monitor=enparalelov2',
-    'https://ve.dolarapi.com/v1/dolares/oficial',
+    'https://pydolarve.org/api/v1/euro?monitor=bcv',
+    'https://ve.dolarapi.com/v1/euros/oficial',
   ];
 
   for (const url of fuentes) {
