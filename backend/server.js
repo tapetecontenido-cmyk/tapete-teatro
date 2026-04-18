@@ -149,7 +149,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 // ── Subir archivo a Cloudinary ─────────────────────────────────────────
-app.post('/api/upload', verificarToken, upload.single('archivo'), async (req, res) => {
+app.post('/api/upload', upload.single('archivo'), async (req, res) => {
   try {
     const resultado = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(

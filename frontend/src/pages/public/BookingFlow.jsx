@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
 import { subirArchivo } from '../../utils/subirArchivo';
-import { db, storage } from '../../services/firebase';
+import { db } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
 import SeatSelector from '../../components/public/SeatSelector';
 import { CheckCircle, ChevronRight, Upload, Smartphone, Building2, X, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import DOMPurify from 'dompurify';
 import toast from 'react-hot-toast';
+import { useTasaBCV } from '../../hooks/useTasaBCV';
 
 const PASOS = ['Asientos', 'Tus datos', 'Pago', 'Confirmación'];
 
@@ -51,6 +52,7 @@ function StepIndicator({ pasoActual }) {
 export default function BookingFlow() {
   const { obraId, funcionId } = useParams();
   const { user, perfil }      = useAuth();
+  const { convertir }         = useTasaBCV();
   const navigate              = useNavigate();
 
   const [paso,          setPaso]          = useState(0);
@@ -332,6 +334,9 @@ try {
             <div className="bg-gradient-brand text-white rounded-2xl p-5 mb-6 text-center">
               <p className="text-white/80 text-sm font-heading uppercase tracking-wide">Total a pagar</p>
               <p className="text-4xl font-bold" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${calcTotal()} USD</p>
+{convertir(calcTotal()) && (
+  <p className="text-sm text-white/70 mt-0.5">= {convertir(calcTotal())} Bs</p>
+)}
             </div>
 
             {/* Método de pago */}
