@@ -206,7 +206,6 @@ export default function AdminReservas() {
       }
 
       // Notificar al cliente
-      const reserva = reservas.find(r => r.id === reservaId);
       if (reserva?.userId) {
         await addDoc(collection(db, 'notificaciones'), {
           userId:    reserva.userId,

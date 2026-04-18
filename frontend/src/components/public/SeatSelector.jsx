@@ -27,23 +27,22 @@ export default function SeatSelector({
   const [seleccionados,    setSeleccionados]    = useState([]);
   const [hoveredSeat,      setHoveredSeat]      = useState(null);
 
-  // ── Suscribirse a asientos ocupados en tiempo real ─────────────────
+// ── Suscribirse a asientos ocupados en tiempo real ─────────────────
   useEffect(() => {
     if (!funcionId) return;
     const ref = doc(db, 'asientosOcupados', funcionId);
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
-  const data = snap.data();
-  const todos = [
-    ...(data.ocupados || []),
-    ...(data.reservados || []),
-  ];
-  setAsientosOcupados(new Set(todos));
-}
+        const data = snap.data();
+        const todos = [
+          ...(data.ocupados || []),
+          ...(data.reservados || []),
+        ];
+        setAsientosOcupados(new Set(todos));
+      }
     });
     return unsub;
   }, [funcionId]);
-
   // ── Notificar cambios hacia afuera ─────────────────────────────────
   useEffect(() => {
     onChange?.(seleccionados);
