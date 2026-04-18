@@ -8,11 +8,13 @@ import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, BookOpen, CheckCircle, Upload, Smartphone, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DOMPurify from 'dompurify';
+import { useTasaBCV } from '../../hooks/useTasaBCV';
 
 export default function TallerDetalle() {
   const { tallerId } = useParams();
   const navigate     = useNavigate();
   const { user, perfil } = useAuth();
+  const { convertir } = useTasaBCV();
   const [taller,    setTaller]    = useState(null);
   const [cargando,  setCargando]  = useState(true);
   const [modal,     setModal]     = useState(false);
@@ -104,7 +106,14 @@ export default function TallerDetalle() {
           </div>
           <div>
             <div className="card p-6 sticky top-24">
-              <p className="text-3xl text-azul mb-1" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${taller.precio} <span className="text-sm font-body font-normal text-gray-400">USD/mes</span></p>
+              <p className="text-3xl text-azul mb-1" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>
+  ${taller.precio} <span className="text-sm font-body font-normal text-gray-400">USD/mes</span>
+</p>
+{convertir(taller.precio) && (
+  <p className="text-sm text-gray-400 mt-0.5">
+    = {convertir(taller.precio)} Bs
+  </p>
+)}
               <p className="text-gray-500 text-sm mb-5">Pago mensual · Incluye materiales</p>
               <button onClick={handleInscribirse} className="btn-primary w-full py-3.5 text-base">
                 Inscribirse ahora
@@ -132,6 +141,9 @@ export default function TallerDetalle() {
                 <div className="bg-gradient-brand text-white rounded-xl p-4 text-center mb-5">
                   <p className="text-white/70 text-sm">Total a pagar</p>
                   <p className="text-3xl" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${taller.precio} USD</p>
+{convertir(taller.precio) && (
+  <p className="text-sm text-white/70 mt-0.5">= {convertir(taller.precio)} Bs</p>
+)}
                 </div>
                 <div className="mb-4">
                   <label className="label-field">Método de pago</label>
