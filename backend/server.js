@@ -385,7 +385,7 @@ async function enviarEmail({ to, subject, html }) {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from:    `Tapete Teatro <${process.env.EMAIL_FROM || 'noreply@tapeteteatro.com'}>`,
+        from: `Tapete Teatro <onboarding@resend.dev>`,
         to:      [to],
         subject,
         html,
@@ -413,7 +413,7 @@ async function enviarEmail({ to, subject, html }) {
     socketTimeout:     15000,
   });
   await transporter.sendMail({
-    from:    `"Tapete Teatro" <${process.env.GMAIL_USER}>`,
+    from: `Tapete Teatro <onboarding@resend.dev>`,
     to,
     subject,
     html,
