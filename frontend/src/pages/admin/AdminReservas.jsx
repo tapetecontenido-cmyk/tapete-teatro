@@ -406,12 +406,6 @@ export default function AdminReservas() {
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-bold bg-green-500 text-white hover:bg-green-600 transition-colors ml-auto">
           ↓ Exportar Excel
         </button>
-        <button
-  onClick={exportarExcel}
-  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-bold bg-green-500 text-white hover:bg-green-600 transition-colors ml-auto"
->
-  ↓ Exportar Excel
-</button>
 
 <button
   onClick={() => setVerPapelera(!verPapelera)}
