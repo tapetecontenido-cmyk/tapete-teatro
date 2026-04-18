@@ -1,5 +1,7 @@
 // src/pages/admin/AdminReservas.jsx
 // Gestión de reservas — Panel Admin Tapete Teatro
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import {
   collection, query, orderBy, onSnapshot,
@@ -27,7 +29,47 @@ function ReservaModal({ reserva, onClose, onConfirmar, onRechazar }) {
       setEnviando(false);
     }
   };
+const exportarExcel = () => {
+  const fechaHoy = format(new Date(), "dd-MM-yyyy", { locale: es });
+  
+  const filas = [
+    // Encabezados
+    ['ID', 'Fecha', 'Nombre', 'Cédula', 'Teléfono', 'Email', 'Obra', 'Asientos', 'Total USD', 'Método de Pago', 'Referencia', 'Estado', 'Nota Admin']
+  ];
 
+  reservas.forEach(r => {
+    filas.push([
+      r.id.slice(-8).toUpperCase(),
+      r.creadoEn ? format(r.creadoEn.toDate?.() || new Date(), "dd/MM/yyyy HH:mm", { locale: es }) : '',
+      r.comprador?.nombre || '',
+      r.comprador?.cedula || '',
+      r.comprador?.telefono || '',
+      r.comprador?.email || '',
+      r.obraNombre || '',
+      r.asientos?.join(', ') || '',
+      r.total || 0,
+      r.metodoPago?.replace('_', ' ') || '',
+      r.referencia || '',
+      r.estado || '',
+      r.notaAdmin || '',
+    ]);
+  });
+
+  // Convertir a CSV con separador de punto y coma (compatible con Excel en español)
+  const csv = filas.map(fila =>
+    fila.map(celda => `"${String(celda).replace(/"/g, '""')}"`).join(';')
+  ).join('\n');
+
+  // Agregar BOM para que Excel reconozca UTF-8
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href     = url;
+  link.download = `reservas-tapete-teatro-${fechaHoy}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast.success('Excel descargado correctamente');
+};
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container max-w-2xl" onClick={e => e.stopPropagation()}>
@@ -58,11 +100,11 @@ function ReservaModal({ reserva, onClose, onConfirmar, onRechazar }) {
               Datos del comprador
             </p>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-gray-400">Nombre:</span> <strong>{reserva.comprador?.nombre}</strong></div>
-              <div><span className="text-gray-400">Cédula:</span> <strong>{reserva.comprador?.cedula}</strong></div>
-              <div><span className="text-gray-400">Teléfono:</span> <strong>{reserva.comprador?.telefono}</strong></div>
-              <div><span className="text-gray-400">Email:</span> <strong>{reserva.comprador?.email}</strong></div>
-            </div>
+  <div><span className="text-gray-600 font-heading">Nombre:</span> <strong className="text-gray-900">{reserva.comprador?.nombre}</strong></div>
+  <div><span className="text-gray-600 font-heading">Cédula:</span> <strong className="text-gray-900">{reserva.comprador?.cedula}</strong></div>
+  <div><span className="text-gray-600 font-heading">Teléfono:</span> <strong className="text-gray-900">{reserva.comprador?.telefono}</strong></div>
+  <div><span className="text-gray-600 font-heading">Email:</span> <strong className="text-gray-900">{reserva.comprador?.email}</strong></div>
+</div>
           </div>
 
           {/* Detalles de la reserva */}
@@ -71,11 +113,11 @@ function ReservaModal({ reserva, onClose, onConfirmar, onRechazar }) {
               Detalles de la reserva
             </p>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-gray-400">Obra:</span> <strong>{reserva.obraNombre}</strong></div>
-              <div><span className="text-gray-400">Total:</span> <strong className="text-azul">${reserva.total} USD</strong></div>
-              <div><span className="text-gray-400">Método:</span> <strong className="capitalize">{reserva.metodoPago?.replace('_', ' ')}</strong></div>
-              <div><span className="text-gray-400">Referencia:</span> <strong>{reserva.referencia}</strong></div>
-            </div>
+  <div><span className="text-gray-600 font-heading">Obra:</span> <strong className="text-gray-900">{reserva.obraNombre}</strong></div>
+  <div><span className="text-gray-600 font-heading">Total:</span> <strong className="text-azul">${reserva.total} USD</strong></div>
+  <div><span className="text-gray-600 font-heading">Método:</span> <strong className="text-gray-900 capitalize">{reserva.metodoPago?.replace('_', ' ')}</strong></div>
+  <div><span className="text-gray-600 font-heading">Referencia:</span> <strong className="text-gray-900">{reserva.referencia}</strong></div>
+</div>
             <div className="mt-3">
               <span className="text-gray-400 text-sm">Asientos: </span>
               <div className="flex flex-wrap gap-1.5 mt-1">
@@ -237,26 +279,30 @@ export default function AdminReservas() {
         actualizadoEn: serverTimestamp(),
       });
 
-      // Liberar asientos reservados
-      const reserva = reservas.find(r => r.id === reservaId);
-      if (reserva?.funcionId && reserva?.asientos) {
-        const asientosRef = doc(db, 'asientosOcupados', reserva.funcionId);
-        try {
-          await updateDoc(asientosRef, {
-            reservados: arrayRemove(...reserva.asientos),
-          });
-        } catch {}
-      }
+     // Liberar asientos reservados
+const reserva = reservas.find(r => r.id === reservaId);
+if (reserva?.asientos && reserva.asientos.length > 0) {
+  const funcId = reserva.funcionId;
+  if (funcId) {
+    const asientosRef = doc(db, 'asientosOcupados', funcId);
+    try {
+      await updateDoc(asientosRef, {
+        reservados: arrayRemove(...reserva.asientos),
+        ocupados:   arrayRemove(...reserva.asientos),
+      });
+    } catch {}
+  }
+}
 
-      if (reserva?.userId) {
-        await addDoc(collection(db, 'notificaciones'), {
-          userId:   reserva.userId,
-          titulo:   'Reserva rechazada',
-          mensaje:  nota || `Tu reserva #${reservaId.slice(-6).toUpperCase()} no pudo ser confirmada.`,
-          leida:    false,
-          creadaEn: serverTimestamp(),
-        });
-      }
+if (reserva?.userId) {
+  await addDoc(collection(db, 'notificaciones'), {
+    userId:   reserva.userId,
+    titulo:   'Reserva rechazada',
+    mensaje:  nota || `Tu reserva #${reservaId.slice(-6).toUpperCase()} no pudo ser confirmada.`,
+    leida:    false,
+    creadaEn: serverTimestamp(),
+  });
+}
 
       await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reservas/notificar`, {
         method: 'POST',
@@ -322,7 +368,16 @@ export default function AdminReservas() {
             </span>
           </button>
         ))}
+
+        {/* Botón exportar Excel */}
+        <button
+          onClick={exportarExcel}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-bold bg-green-500 text-white hover:bg-green-600 transition-colors ml-auto"
+        >
+          ↓ Exportar Excel
+        </button>
       </div>
+
 
       {/* Buscador */}
       <div className="relative mb-5">

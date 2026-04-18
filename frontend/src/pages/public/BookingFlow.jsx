@@ -172,7 +172,7 @@ export default function BookingFlow() {
       const reservaData = {
         userId:        user?.uid || null,
         obraId,
-        obraназвание: obra.nombre,
+        obraNombre: obra.nombre,
         funcionId,
         asientos:      seatsElegidos,
         total:         calcTotal(),
