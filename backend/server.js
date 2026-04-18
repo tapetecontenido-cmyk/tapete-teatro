@@ -252,26 +252,28 @@ app.post('/api/reservas/notificar',
           ? `✅ Reserva confirmada — Tapete Teatro #${reservaId.slice(-8).toUpperCase()}`
           : `❌ Reserva no aprobada — Tapete Teatro`,
         html: accion === 'confirmar'
-          ? `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #3333CC, #299FE3); padding: 32px; text-align: center; border-radius: 16px 16px 0 0;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">¡Reserva Confirmada!</h1>
-              </div>
-              <div style="padding: 32px; background: white; border-radius: 0 0 16px 16px; border: 1px solid #eee;">
-                <p>Hola, <strong>${reserva.comprador?.nombre}</strong>.</p>
-                <p>Tu reserva para <strong>${reserva.obraNombre}</strong> ha sido <strong style="color: #22c55e;">confirmada</strong>.</p>
-                <div style="background: #f8f9fa; padding: 16px; border-radius: 12px; margin: 16px 0;">
-                  <p style="margin: 4px 0;"><strong>ID:</strong> #${reservaId.slice(-8).toUpperCase()}</p>
-                  <p style="margin: 4px 0;"><strong>Asientos:</strong> ${reserva.asientos?.join(', ')}</p>
-                  <p style="margin: 4px 0;"><strong>Total:</strong> $${reserva.total} USD</p>
-                </div>
-                ${nota ? `<p><strong>Nota:</strong> ${nota}</p>` : ''}
-                <p style="color: #6b7280; font-size: 14px;">Recuerda presentar tu identificación en la taquilla.</p>
-                <p>¡Hasta pronto en el teatro!</p>
-                <p style="color: #3333CC; font-weight: bold;">Tapete Teatro</p>
-              </div>
-            </div>
-          `
+  ? `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #3333CC, #299FE3); padding: 32px; text-align: center; border-radius: 16px 16px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">✅ ¡Pago Confirmado!</h1>
+        <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0;">Tapete Teatro</p>
+      </div>
+      <div style="padding: 32px; background: white; border-radius: 0 0 16px 16px; border: 1px solid #eee;">
+        <p>Hola, <strong>${reserva.comprador?.nombre}</strong>.</p>
+        <p>Tu pago ha sido <strong style="color: #22c55e;">verificado y confirmado</strong>. ¡Tu entrada está lista!</p>
+        <div style="background: #f8f9fa; padding: 16px; border-radius: 12px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>ID de reserva:</strong> #${reservaId.slice(-8).toUpperCase()}</p>
+          <p style="margin: 4px 0;"><strong>Obra:</strong> ${reserva.obraNombre || '—'}</p>
+          <p style="margin: 4px 0;"><strong>Asientos:</strong> ${reserva.asientos?.map(s => '#' + s).join(', ')}</p>
+          <p style="margin: 4px 0;"><strong>Total pagado:</strong> $${reserva.total} USD</p>
+        </div>
+        ${nota ? `<div style="background: #f0f9ff; border-left: 4px solid #299FE3; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0;"><p style="margin: 0; color: #1B7FB5; font-size: 14px;">${nota}</p></div>` : ''}
+        <p style="color: #6b7280; font-size: 14px;">Recuerda presentar tu identificación en la taquilla el día de la función.</p>
+        <p>¡Nos vemos en el teatro!</p>
+        <p style="color: #3333CC; font-weight: bold; margin-top: 24px;">Tapete Teatro</p>
+      </div>
+    </div>
+  `
           : `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: #ef4444; padding: 32px; text-align: center; border-radius: 16px 16px 0 0;">
@@ -295,7 +297,46 @@ app.post('/api/reservas/notificar',
     }
   }
 );
+// ── Email de recepción de reserva ──────────────────────────────────────
+app.post('/api/reservas/recibida', async (req, res) => {
+  const { reservaId, comprador, asientos, total, metodoPago, obraNombre } = req.body;
+  if (!comprador?.email) return res.status(400).json({ error: 'Email requerido' });
 
+  try {
+    await enviarEmail({
+      to: comprador.email,
+      subject: `Reserva recibida — Tapete Teatro #${reservaId.slice(-8).toUpperCase()}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #3333CC, #299FE3); padding: 32px; text-align: center; border-radius: 16px 16px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">¡Reserva Recibida!</h1>
+            <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0;">Tapete Teatro</p>
+          </div>
+          <div style="padding: 32px; background: white; border-radius: 0 0 16px 16px; border: 1px solid #eee;">
+            <p>Hola, <strong>${comprador.nombre}</strong>.</p>
+            <p>Hemos recibido tu solicitud de reserva. Tu pago está siendo verificado por nuestro equipo.</p>
+            <div style="background: #f8f9fa; padding: 16px; border-radius: 12px; margin: 16px 0;">
+              <p style="margin: 4px 0;"><strong>ID de reserva:</strong> #${reservaId.slice(-8).toUpperCase()}</p>
+              <p style="margin: 4px 0;"><strong>Obra:</strong> ${obraNombre || '—'}</p>
+              <p style="margin: 4px 0;"><strong>Asientos:</strong> ${asientos?.map(s => '#' + s).join(', ')}</p>
+              <p style="margin: 4px 0;"><strong>Total:</strong> $${total} USD</p>
+              <p style="margin: 4px 0;"><strong>Método de pago:</strong> ${metodoPago?.replace('_', ' ')}</p>
+            </div>
+            <div style="background: #f0f9ff; border-left: 4px solid #299FE3; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0;">
+              <p style="margin: 0; color: #1B7FB5; font-size: 14px;">Recibirás una confirmación final una vez que verifiquemos tu pago. Esto puede tomar hasta 24 horas hábiles.</p>
+            </div>
+            <p>Si tienes alguna duda, contáctanos por WhatsApp: <strong>+58 424-228-34-71</strong></p>
+            <p style="color: #3333CC; font-weight: bold; margin-top: 24px;">Tapete Teatro</p>
+          </div>
+        </div>
+      `
+    });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Error enviando email de recepción:', err.message);
+    return res.status(500).json({ error: 'Error enviando email' });
+  }
+});
 // ── Contacto ───────────────────────────────────────────────────────────
 app.post('/api/contacto',
   limiterAuth,

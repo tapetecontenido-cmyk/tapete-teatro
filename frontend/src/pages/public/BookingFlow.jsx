@@ -170,7 +170,21 @@ export default function BookingFlow() {
       } catch {
         await setDoc(asientosRef, { funcionId, reservados: seatsElegidos, ocupados: [] });
       }
-
+      // Enviar email de recepción al comprador
+try {
+  await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reservas/recibida`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      reservaId: docRef.id,
+      comprador: compradorLimpio,
+      asientos:  seatsElegidos,
+      total:     calcTotal(),
+      metodoPago,
+      obraNombre: obra.nombre,
+    }),
+  });
+} catch {}
       try {
         await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reservas/verificar`, {
           method:  'POST',
