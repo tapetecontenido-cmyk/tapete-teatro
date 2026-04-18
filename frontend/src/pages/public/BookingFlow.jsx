@@ -15,7 +15,6 @@ import { useTasaBCV } from '../../hooks/useTasaBCV';
 
 const PASOS = ['Asientos', 'Tus datos', 'Pago', 'Confirmación'];
 
-// ── Indicador de pasos ─────────────────────────────────────────────────
 function StepIndicator({ pasoActual }) {
   return (
     <div className="flex items-center justify-center gap-0 mb-10">
@@ -63,34 +62,26 @@ export default function BookingFlow() {
   const [enviando,      setEnviando]      = useState(false);
   const [reservaId,     setReservaId]     = useState('');
 
-  // Estado del formulario
-  const [seatsElegidos, setSeatsElegidos] = useState([]);
-  const [datosComprador, setDatosComprador] = useState({
-    nombre: '', cedula: '', telefono: '', email: ''
-  });
-  const [metodoPago,    setMetodoPago]    = useState('pago_movil'); // 'pago_movil' | 'transferencia'
-  const [referencia,    setReferencia]    = useState('');
-  const [comprobante,   setComprobante]   = useState(null);
-  const [errores,       setErrores]       = useState({});
+  const [seatsElegidos,  setSeatsElegidos]  = useState([]);
+  const [datosComprador, setDatosComprador] = useState({ nombre: '', cedula: '', telefono: '', email: '' });
+  const [metodoPago,     setMetodoPago]     = useState('pago_movil');
+  const [referencia,     setReferencia]     = useState('');
+  const [comprobante,    setComprobante]    = useState(null);
+  const [errores,        setErrores]        = useState({});
 
-  // ── Cargar datos ───────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Obra
         const obraSnap = await getDoc(doc(db, 'obras', obraId));
         if (!obraSnap.exists()) { navigate('/cartelera'); return; }
         setObra({ id: obraId, ...obraSnap.data() });
 
-        // Función
         const funcionSnap = await getDoc(doc(db, 'obras', obraId, 'funciones', funcionId));
         if (funcionSnap.exists()) setFuncion({ id: funcionId, ...funcionSnap.data() });
 
-        // Configuración bancaria
         const configSnap = await getDoc(doc(db, 'configuracion', 'bancario'));
         if (configSnap.exists()) setConfigBanco(configSnap.data());
 
-        // Pre-rellenar datos si está logueado
         if (perfil) {
           setDatosComprador({
             nombre:   perfil.nombre   || '',
@@ -109,12 +100,8 @@ export default function BookingFlow() {
     fetchData();
   }, [obraId, funcionId]);
 
-  // ── Validaciones ───────────────────────────────────────────────────
   const validarPaso1 = () => {
-    if (seatsElegidos.length === 0) {
-      toast.error('Selecciona al menos un asiento');
-      return false;
-    }
+    if (seatsElegidos.length === 0) { toast.error('Selecciona al menos un asiento'); return false; }
     return true;
   };
 
@@ -129,18 +116,11 @@ export default function BookingFlow() {
   };
 
   const validarPaso3 = () => {
-    if (!referencia.trim()) {
-      toast.error('Ingresa el número de referencia del pago');
-      return false;
-    }
-    if (!comprobante) {
-      toast.error('Sube el comprobante de pago');
-      return false;
-    }
+    if (!referencia.trim()) { toast.error('Ingresa el número de referencia del pago'); return false; }
+    if (!comprobante)       { toast.error('Sube el comprobante de pago'); return false; }
     return true;
   };
 
-  // ── Calcular total ─────────────────────────────────────────────────
   const calcTotal = () => {
     let total = 0;
     const vipFilas = obra?.layoutConfig?.vipFilas || [];
@@ -151,16 +131,12 @@ export default function BookingFlow() {
     return total;
   };
 
-  // ── Enviar reserva ─────────────────────────────────────────────────
   const enviarReserva = async () => {
     if (!validarPaso3()) return;
     setEnviando(true);
-
     try {
-      // 1. Subir comprobante a Firebase Storage
-      const comprobanteUrl = await subirArchivo(comprobante, 'comprobantes');;
+      const comprobanteUrl = await subirArchivo(comprobante, 'comprobantes');
 
-      // 2. Sanitizar datos del comprador
       const compradorLimpio = {
         nombre:   DOMPurify.sanitize(datosComprador.nombre.trim()),
         cedula:   DOMPurify.sanitize(datosComprador.cedula.trim()),
@@ -168,11 +144,10 @@ export default function BookingFlow() {
         email:    datosComprador.email.trim().toLowerCase(),
       };
 
-      // 3. Crear reserva en Firestore
       const reservaData = {
         userId:        user?.uid || null,
         obraId,
-        obraNombre: obra.nombre,
+        obraNombre:    obra.nombre,
         funcionId,
         asientos:      seatsElegidos,
         total:         calcTotal(),
@@ -189,35 +164,23 @@ export default function BookingFlow() {
       const docRef = await addDoc(collection(db, 'reservas'), reservaData);
       setReservaId(docRef.id);
 
-      // 4. Marcar asientos como reservados en tiempo real
-const asientosRef = doc(db, 'asientosOcupados', funcionId);
-try {
-  await updateDoc(asientosRef, {
-    reservados: arrayUnion(...seatsElegidos),
-  });
-} catch {
-  await setDoc(asientosRef, {
-    funcionId,
-    reservados: seatsElegidos,
-    ocupados: []
-  });
-}
-
-      // 5. Verificación automática via backend (opcional, si está activado)
+      const asientosRef = doc(db, 'asientosOcupados', funcionId);
       try {
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reservas/verificar`, {
+        await updateDoc(asientosRef, { reservados: arrayUnion(...seatsElegidos) });
+      } catch {
+        await setDoc(asientosRef, { funcionId, reservados: seatsElegidos, ocupados: [] });
+      }
+
+      try {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reservas/verificar`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ reservaId: docRef.id, referencia, metodoPago }),
         });
-        // Si falla, no importa — el admin verificará manualmente
-      } catch {
-        // Silencioso — fallback a verificación manual
-      }
+      } catch {}
 
       setPaso(3);
       toast.success('¡Reserva enviada!');
-
     } catch (err) {
       console.error('Error enviando reserva:', err);
       toast.error('Error al enviar la reserva. Inténtalo de nuevo.');
@@ -232,6 +195,19 @@ try {
     else if (paso === 2) enviarReserva();
   };
 
+  const whatsappUrl = 'https://wa.me/584242283471?text=' + encodeURIComponent(
+    'Hola, Tapete Teatro! Acabo de realizar una reserva.\n\n' +
+    'ID de Reserva: #' + reservaId.slice(-8).toUpperCase() + '\n' +
+    'Nombre: ' + datosComprador.nombre + '\n' +
+    'Cedula: ' + datosComprador.cedula + '\n' +
+    'Telefono: ' + datosComprador.telefono + '\n' +
+    'Email: ' + datosComprador.email + '\n' +
+    'Asientos: ' + seatsElegidos.join(', ') + '\n' +
+    'Total: $' + calcTotal() + ' USD\n' +
+    'Metodo de pago: ' + metodoPago.replace('_', ' ') + '\n' +
+    'Referencia: ' + referencia
+  );
+
   if (cargando) return (
     <div className="min-h-screen flex items-center justify-center pt-20">
       <div className="spinner w-10 h-10" />
@@ -244,7 +220,6 @@ try {
     <div className="min-h-screen bg-gray-50 pt-24 pb-16">
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
 
-        {/* Header */}
         <div className="text-center mb-8">
           <button onClick={() => navigate(`/cartelera/${obraId}`)}
             className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-azul transition-colors mb-4">
@@ -260,7 +235,6 @@ try {
 
         <StepIndicator pasoActual={paso} />
 
-        {/* ── PASO 0: SELECCIÓN DE ASIENTOS ─────────────────────────── */}
         {paso === 0 && (
           <div className="card p-6 sm:p-8">
             <h2 className="font-heading font-bold text-xl text-gray-900 mb-6">
@@ -280,15 +254,14 @@ try {
           </div>
         )}
 
-        {/* ── PASO 1: DATOS DEL COMPRADOR ───────────────────────────── */}
         {paso === 1 && (
           <div className="card p-6 sm:p-8">
             <h2 className="font-heading font-bold text-xl text-gray-900 mb-6">Tus datos</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {[
-                { key: 'nombre',   label: 'Nombre completo', type: 'text',  placeholder: 'Juan Pérez' },
-                { key: 'cedula',   label: 'Cédula / Pasaporte', type: 'text', placeholder: 'V-12345678' },
-                { key: 'telefono', label: 'Teléfono', type: 'tel',   placeholder: '+58 424-000-0000' },
+                { key: 'nombre',   label: 'Nombre completo',    type: 'text',  placeholder: 'Juan Pérez' },
+                { key: 'cedula',   label: 'Cédula / Pasaporte', type: 'text',  placeholder: 'V-12345678' },
+                { key: 'telefono', label: 'Teléfono',           type: 'tel',   placeholder: '+58 424-000-0000' },
                 { key: 'email',    label: 'Correo electrónico', type: 'email', placeholder: 'juan@email.com' },
               ].map(({ key, label, type, placeholder }) => (
                 <div key={key} className={key === 'email' ? 'sm:col-span-2' : ''}>
@@ -308,14 +281,10 @@ try {
                 </div>
               ))}
             </div>
-
-            {/* Resumen */}
             <div className="mt-6 bg-gray-50 rounded-xl p-4 border border-gray-200">
               <p className="text-sm font-heading font-bold text-gray-700 mb-2">Resumen de compra</p>
               <div className="flex flex-wrap gap-2 mb-3">
-                {seatsElegidos.map(s => (
-                  <span key={s} className="badge bg-azul/10 text-azul">{s}</span>
-                ))}
+                {seatsElegidos.map(s => <span key={s} className="badge bg-azul/10 text-azul">{s}</span>)}
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">{seatsElegidos.length} asiento{seatsElegidos.length > 1 ? 's' : ''}</span>
@@ -325,35 +294,29 @@ try {
           </div>
         )}
 
-        {/* ── PASO 2: PAGO ──────────────────────────────────────────── */}
         {paso === 2 && (
           <div className="card p-6 sm:p-8">
             <h2 className="font-heading font-bold text-xl text-gray-900 mb-6">Realizar pago</h2>
 
-            {/* Total a pagar */}
             <div className="bg-gradient-brand text-white rounded-2xl p-5 mb-6 text-center">
               <p className="text-white/80 text-sm font-heading uppercase tracking-wide">Total a pagar</p>
               <p className="text-4xl font-bold" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${calcTotal()} USD</p>
-{convertir(calcTotal()) && (
-  <p className="text-sm text-white/70 mt-0.5">= {convertir(calcTotal())} Bs</p>
-)}
+              {convertir(calcTotal()) && (
+                <p className="text-sm text-white/70 mt-0.5">= {convertir(calcTotal())} Bs</p>
+              )}
             </div>
 
-            {/* Método de pago */}
             <div className="mb-6">
               <label className="label-field mb-3">Método de pago</label>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { val: 'pago_movil',     label: 'Pago Móvil',     icon: <Smartphone size={20} /> },
-                  { val: 'transferencia',  label: 'Transferencia',   icon: <Building2  size={20} /> },
+                  { val: 'pago_movil',    label: 'Pago Móvil',   icon: <Smartphone size={20} /> },
+                  { val: 'transferencia', label: 'Transferencia', icon: <Building2  size={20} /> },
                 ].map(({ val, label, icon }) => (
-                  <button key={val}
-                    onClick={() => setMetodoPago(val)}
+                  <button key={val} onClick={() => setMetodoPago(val)}
                     className={clsx(
                       'flex items-center gap-3 p-4 rounded-xl border-2 transition-all font-heading font-bold text-sm',
-                      metodoPago === val
-                        ? 'border-azul bg-azul/5 text-azul'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      metodoPago === val ? 'border-azul bg-azul/5 text-azul' : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     )}>
                     {icon} {label}
                   </button>
@@ -361,7 +324,6 @@ try {
               </div>
             </div>
 
-            {/* Datos bancarios */}
             {configBanco && (
               <div className="bg-cyan/5 border border-cyan/20 rounded-xl p-5 mb-6">
                 <p className="text-sm font-heading font-bold text-cyan uppercase tracking-wide mb-3">
@@ -385,65 +347,38 @@ try {
               </div>
             )}
 
-            {/* Referencia */}
             <div className="mb-5">
               <label className="label-field">Número de referencia del pago</label>
-              <input
-                type="text"
-                value={referencia}
-                onChange={e => setReferencia(e.target.value)}
-                placeholder="Ej: 000123456789"
-                className="input-field"
-                maxLength={30}
-              />
+              <input type="text" value={referencia} onChange={e => setReferencia(e.target.value)}
+                placeholder="Ej: 000123456789" className="input-field" maxLength={30} />
             </div>
 
-            {/* Subir comprobante */}
             <div>
               <label className="label-field">Comprobante de pago</label>
               <label className={clsx(
-                'flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed',
-                'cursor-pointer transition-all duration-200',
-                comprobante
-                  ? 'border-green-400 bg-green-50'
-                  : 'border-gray-300 hover:border-azul hover:bg-azul/3'
+                'flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200',
+                comprobante ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-azul hover:bg-azul/3'
               )}>
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  className="hidden"
+                <input type="file" accept="image/*,.pdf" className="hidden"
                   onChange={e => {
                     const file = e.target.files?.[0];
-                    if (file && file.size > 5 * 1024 * 1024) {
-                      toast.error('El archivo debe pesar máximo 5MB');
-                      return;
-                    }
+                    if (file && file.size > 5 * 1024 * 1024) { toast.error('El archivo debe pesar máximo 5MB'); return; }
                     setComprobante(file || null);
                   }}
                 />
                 {comprobante ? (
-                  <>
-                    <CheckCircle size={32} className="text-green-500" />
-                    <p className="text-sm font-heading font-bold text-green-700">{comprobante.name}</p>
-                    <p className="text-xs text-green-500">Clic para cambiar</p>
-                  </>
+                  <><CheckCircle size={32} className="text-green-500" /><p className="text-sm font-heading font-bold text-green-700">{comprobante.name}</p><p className="text-xs text-green-500">Clic para cambiar</p></>
                 ) : (
-                  <>
-                    <Upload size={32} className="text-gray-400" />
-                    <p className="text-sm font-heading font-bold text-gray-600">Subir comprobante</p>
-                    <p className="text-xs text-gray-400">Imagen o PDF · máx. 5MB</p>
-                  </>
+                  <><Upload size={32} className="text-gray-400" /><p className="text-sm font-heading font-bold text-gray-600">Subir comprobante</p><p className="text-xs text-gray-400">Imagen o PDF · máx. 5MB</p></>
                 )}
               </label>
             </div>
           </div>
         )}
 
-        {/* ── PASO 3: CONFIRMACIÓN ──────────────────────────────────── */}
         {paso === 3 && (
           <div className="card p-8 text-center">
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6
-                            animate-pulse-brand">
+            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
               <CheckCircle size={40} className="text-green-500" />
             </div>
             <h2 className="font-display text-display-sm text-gray-900 mb-3">¡Reserva enviada!</h2>
@@ -475,8 +410,9 @@ try {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href={`https://wa.me/584242283471?text=Hola,%20tengo%20una%20reserva%20ID:%20${reservaId.slice(-8).toUpperCase()}`}
-                target="_blank" rel="noopener noreferrer"
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn-secondary gap-2"
               >
                 <Smartphone size={18} />
@@ -489,17 +425,14 @@ try {
           </div>
         )}
 
-        {/* Botones de navegación */}
         {paso < 3 && (
           <div className="flex justify-between mt-6 gap-4">
             {paso > 0 ? (
-              <button onClick={() => setPaso(p => p - 1)}
-                className="btn-outline py-3 px-6">
+              <button onClick={() => setPaso(p => p - 1)} className="btn-outline py-3 px-6">
                 ← Anterior
               </button>
             ) : (
-              <button onClick={() => navigate(-1)}
-                className="btn-ghost py-3 px-6 text-gray-500">
+              <button onClick={() => navigate(-1)} className="btn-ghost py-3 px-6 text-gray-500">
                 Cancelar
               </button>
             )}
@@ -509,17 +442,11 @@ try {
               className="btn-primary py-3 px-8 flex-1 max-w-xs justify-center"
             >
               {enviando ? (
-                <span className="flex items-center gap-2">
-                  <span className="spinner w-5 h-5" /> Enviando...
-                </span>
+                <span className="flex items-center gap-2"><span className="spinner w-5 h-5" /> Enviando...</span>
               ) : paso === 2 ? (
-                <span className="flex items-center gap-2">
-                  Enviar reserva <CheckCircle size={18} />
-                </span>
+                <span className="flex items-center gap-2">Enviar reserva <CheckCircle size={18} /></span>
               ) : (
-                <span className="flex items-center gap-2">
-                  Continuar <ChevronRight size={18} />
-                </span>
+                <span className="flex items-center gap-2">Continuar <ChevronRight size={18} /></span>
               )}
             </button>
           </div>
