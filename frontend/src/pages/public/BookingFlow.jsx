@@ -198,6 +198,7 @@ export default function BookingFlow() {
   const whatsappUrl = 'https://wa.me/584242283471?text=' + encodeURIComponent(
     'Hola, Tapete Teatro! Acabo de realizar una reserva.\n\n' +
     'ID de Reserva: #' + reservaId.slice(-8).toUpperCase() + '\n' +
+    'Obra: ' + (obra?.nombre || '') + '\n' +
     'Nombre: ' + datosComprador.nombre + '\n' +
     'Cedula: ' + datosComprador.cedula + '\n' +
     'Telefono: ' + datosComprador.telefono + '\n' +

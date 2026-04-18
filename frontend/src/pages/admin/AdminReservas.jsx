@@ -52,7 +52,37 @@ const exportarExcel = () => {
       r.notaAdmin || '',
     ]);
   });
+const eliminarSeleccionadas = async () => {
+  if (seleccionadas.size === 0) { toast.error('Selecciona al menos una reserva'); return; }
+  if (!confirm(`¿Eliminar ${seleccionadas.size} reserva(s)? Esta acción no se puede deshacer.`)) return;
+  
+  try {
+    const { deleteDoc } = await import('firebase/firestore');
+    for (const id of seleccionadas) {
+      await deleteDoc(doc(db, 'reservas', id));
+    }
+    setSeleccionadas(new Set());
+    toast.success(`${seleccionadas.size} reserva(s) eliminadas`);
+  } catch (err) {
+    toast.error('Error al eliminar: ' + err.message);
+  }
+};
 
+const toggleSeleccion = (id) => {
+  setSeleccionadas(prev => {
+    const nueva = new Set(prev);
+    nueva.has(id) ? nueva.delete(id) : nueva.add(id);
+    return nueva;
+  });
+};
+
+const seleccionarTodas = () => {
+  if (seleccionadas.size === reservasFiltradas.length) {
+    setSeleccionadas(new Set());
+  } else {
+    setSeleccionadas(new Set(reservasFiltradas.map(r => r.id)));
+  }
+};
   // Convertir a CSV con separador de punto y coma (compatible con Excel en español)
   const csv = filas.map(fila =>
     fila.map(celda => `"${String(celda).replace(/"/g, '""')}"`).join(';')
@@ -214,6 +244,7 @@ export default function AdminReservas() {
   const [busqueda,      setBusqueda]      = useState('');
   const [reservaModal,  setReservaModal]  = useState(null);
   const [cargando,      setCargando]      = useState(true);
+  const [seleccionadas, setSeleccionadas] = useState(new Set());
   const exportarExcel = () => {
   const fechaHoy = new Date().toLocaleDateString('es-VE').replace(/\//g, '-');
 
@@ -412,6 +443,15 @@ if (reserva?.userId) {
         >
           ↓ Exportar Excel
         </button>
+        {/* AQUÍ */}
+{seleccionadas.size > 0 && (
+  <button
+    onClick={eliminarSeleccionadas}
+    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-bold bg-red-500 text-white hover:bg-red-600 transition-colors"
+  >
+    🗑 Eliminar {seleccionadas.size} seleccionada(s)
+  </button>
+)}
       </div>
 
 
@@ -443,6 +483,14 @@ if (reserva?.userId) {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 text-xs font-heading font-bold text-gray-500 uppercase tracking-wide border-b border-gray-100">
+                  <th className="px-5 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={seleccionadas.size === reservasFiltradas.length && reservasFiltradas.length > 0}
+                      onChange={seleccionarTodas}
+                      className="w-4 h-4 accent-azul cursor-pointer"
+                    />
+                  </th>
                   <th className="px-5 py-3 text-left">ID</th>
                   <th className="px-5 py-3 text-left">Cliente</th>
                   <th className="px-5 py-3 text-left hidden md:table-cell">Obra</th>
@@ -457,13 +505,21 @@ if (reserva?.userId) {
               <tbody className="divide-y divide-gray-50">
                 {reservasFiltradas.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3">
+                      <input
+                        type="checkbox"
+                        checked={seleccionadas.has(r.id)}
+                        onChange={() => toggleSeleccion(r.id)}
+                        className="w-4 h-4 accent-azul cursor-pointer"
+                      />
+                    </td>
                     <td className="px-5 py-3 text-xs font-mono text-gray-400">
                       #{r.id.slice(-6).toUpperCase()}
                     </td>
                     <td className="px-5 py-3">
-  <p className="text-sm font-heading font-bold text-azul">{r.comprador?.nombre}</p>
-  <p className="text-xs text-gray-700">{r.comprador?.email}</p>
-</td>
+                      <p className="text-sm font-heading font-bold text-azul">{r.comprador?.nombre}</p>
+                      <p className="text-xs text-gray-700">{r.comprador?.email}</p>
+                    </td>
                     <td className="px-5 py-3 hidden md:table-cell text-sm font-heading font-bold text-gray-900">
   {r.obraNombre || '—'}
 </td>
