@@ -45,6 +45,7 @@ const upload = multer({
 // ── Express setup ──────────────────────────────────────────────────────
 const app  = express();
 const PORT = process.env.PORT || 3001;
+app.set('trust proxy', 1);
 
 // ── Middlewares de seguridad ───────────────────────────────────────────
 
@@ -223,8 +224,6 @@ app.post('/api/reservas/verificar',
 
 // ── Notificar confirmación/rechazo al cliente ──────────────────────────
 app.post('/api/reservas/notificar',
-  verificarToken,
-  soloAdmin,
   [
     body('reservaId').isString().trim().notEmpty(),
     body('accion').isIn(['confirmar', 'rechazar']),
@@ -376,7 +375,6 @@ app.post('/api/contacto',
 
 // ── Función helper: enviar email ───────────────────────────────────────
 async function enviarEmail({ to, subject, html }) {
-  // Usando Resend (recomendado por ser gratis y simple)
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
   if (RESEND_API_KEY) {
@@ -403,11 +401,16 @@ async function enviarEmail({ to, subject, html }) {
   // Fallback: Nodemailer con Gmail
   const nodemailer = require('nodemailer');
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host:    'smtp.gmail.com',
+    port:    465,
+    secure:  true,
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_PASS,
     },
+    connectionTimeout: 10000,
+    greetingTimeout:   10000,
+    socketTimeout:     15000,
   });
   await transporter.sendMail({
     from:    `"Tapete Teatro" <${process.env.GMAIL_USER}>`,
