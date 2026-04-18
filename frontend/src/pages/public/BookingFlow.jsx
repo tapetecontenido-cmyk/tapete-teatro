@@ -327,7 +327,7 @@ export default function BookingFlow() {
             {/* Total a pagar */}
             <div className="bg-gradient-brand text-white rounded-2xl p-5 mb-6 text-center">
               <p className="text-white/80 text-sm font-heading uppercase tracking-wide">Total a pagar</p>
-              <p className="font-display text-4xl font-bold">${calcTotal()} USD</p>
+              <p className="text-4xl font-bold" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${calcTotal()} USD</p>
             </div>
 
             {/* Método de pago */}

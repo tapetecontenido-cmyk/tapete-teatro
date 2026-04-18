@@ -104,7 +104,7 @@ export default function TallerDetalle() {
           </div>
           <div>
             <div className="card p-6 sticky top-24">
-              <p className="font-display text-3xl text-azul mb-1">${taller.precio} <span className="text-sm font-body font-normal text-gray-400">USD/mes</span></p>
+              <p className="text-3xl text-azul mb-1" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${taller.precio} <span className="text-sm font-body font-normal text-gray-400">USD/mes</span></p>
               <p className="text-gray-500 text-sm mb-5">Pago mensual · Incluye materiales</p>
               <button onClick={handleInscribirse} className="btn-primary w-full py-3.5 text-base">
                 Inscribirse ahora

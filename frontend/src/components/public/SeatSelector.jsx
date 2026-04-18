@@ -209,7 +209,7 @@ export default function SeatSelector({
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-azul/15">
                 <span className="text-sm text-gray-600">Total estimado:</span>
-                <span className="font-display text-2xl text-azul font-bold">
+                <span className="text-2xl text-azul font-bold" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>
                   ${calcTotal()} <span className="text-sm font-body font-normal text-gray-400">USD</span>
                 </span>
               </div>
