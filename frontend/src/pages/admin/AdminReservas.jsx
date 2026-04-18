@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import {
   collection, query, orderBy, onSnapshot,
-  doc, updateDoc, serverTimestamp, addDoc
+  doc, updateDoc, serverTimestamp, addDoc,
+  arrayUnion, arrayRemove, deleteDoc
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { CheckCircle, XCircle, Eye, Search, Filter, ExternalLink } from 'lucide-react';
@@ -35,6 +36,36 @@ const exportarExcel = () => {
     ['ID', 'Fecha', 'Nombre', 'Cédula', 'Teléfono', 'Email', 'Obra', 'Asientos', 'Total USD', 'Método de Pago', 'Referencia', 'Estado', 'Nota Admin']
   ];
 
+  const toggleSeleccion = (id) => {
+  setSeleccionadas(prev => {
+    const nueva = new Set(prev);
+    nueva.has(id) ? nueva.delete(id) : nueva.add(id);
+    return nueva;
+  });
+};
+
+const seleccionarTodas = () => {
+  if (seleccionadas.size === reservasFiltradas.length) {
+    setSeleccionadas(new Set());
+  } else {
+    setSeleccionadas(new Set(reservasFiltradas.map(r => r.id)));
+  }
+};
+
+const eliminarSeleccionadas = async () => {
+  if (seleccionadas.size === 0) { toast.error('Selecciona al menos una reserva'); return; }
+  if (!confirm(`¿Eliminar ${seleccionadas.size} reserva(s)? Esta acción no se puede deshacer.`)) return;
+  try {
+    for (const id of seleccionadas) {
+      await deleteDoc(doc(db, 'reservas', id));
+    }
+    setSeleccionadas(new Set());
+    toast.success('Reservas eliminadas');
+  } catch (err) {
+    toast.error('Error al eliminar: ' + err.message);
+  }
+};
+// Filtrar reservas
   reservas.forEach(r => {
     filas.push([
       r.id.slice(-8).toUpperCase(),
