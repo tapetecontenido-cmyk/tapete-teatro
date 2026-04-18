@@ -73,14 +73,22 @@ export default function Contacto() {
             <div className="card p-6">
               <h3 className="font-heading font-bold text-gray-900 text-lg mb-4">Directores</h3>
               <div className="space-y-4">
-                {[
-                  { nombre: 'Antonio Cuevas', ig: '@antoniocuevass', tel: '+58 424-228-34-71' },
-                  { nombre: 'Daifra Blanco',  ig: '@daifrablanco',   tel: '+58 424-179-08-60' },
-                ].map(({ nombre, ig, tel }) => (
-                  <div key={nombre} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50">
-                    <div className="w-12 h-12 rounded-full bg-gradient-brand flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                      {nombre.split(' ').map(n => n[0]).join('')}
-                    </div>
+  {[
+    { nombre: 'Antonio Cuevas', ig: '@antoniocuevass', tel: '+58 424-228-34-71', foto: '/antonio.jpg', ini: 'AC' },
+    { nombre: 'Daifra Blanco',  ig: '@daifrablanco',   tel: '+58 424-179-08-60', foto: '/daifra.jpg',  ini: 'DB' },
+  ].map(({ nombre, ig, tel, foto, ini }) => (
+    <div key={nombre} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50">
+      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-azul/30 flex-shrink-0">
+        <img src={foto} alt={nombre} className="w-full h-full object-cover"
+          onError={e => {
+            e.target.style.display = 'none';
+            e.target.parentElement.style.background = 'linear-gradient(135deg,#3333CC,#299FE3)';
+            e.target.parentElement.style.display = 'flex';
+            e.target.parentElement.style.alignItems = 'center';
+            e.target.parentElement.style.justifyContent = 'center';
+            e.target.parentElement.innerHTML = `<span style="color:white;font-weight:bold;font-size:0.85rem">${ini}</span>`;
+          }} />
+      </div>
                     <div>
                       <p className="font-heading font-bold text-gray-900">{nombre}</p>
                       <div className="flex gap-3 text-sm text-gray-500">
