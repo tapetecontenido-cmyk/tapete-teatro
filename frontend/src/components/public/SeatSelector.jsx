@@ -207,7 +207,7 @@ export default function SeatSelector({
   return (
     <div className="space-y-6">
       <div className="overflow-x-auto">
-        <div className="min-w-full flex justify-center">
+        <div className="flex justify-center" style={{ minWidth: 'max-content', margin: '0 auto' }}>
           {renderCroquis()}
         </div>
       </div>
@@ -220,7 +220,6 @@ export default function SeatSelector({
           </div>
         ))}
       </div>
-
       {seleccionados.length > 0 && (
         <div className="bg-azul/5 border border-azul/15 rounded-2xl p-5">
           <div className="flex items-start gap-3">
