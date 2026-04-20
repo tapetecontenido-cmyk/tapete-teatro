@@ -5,64 +5,51 @@ import { db } from '../../services/firebase';
 import { clsx } from 'clsx';
 import { Info } from 'lucide-react';
 
-const GRID = 40;
-
-const FORMAS = {
-  rect: { borderRadius: 12 },
-  round: { borderRadius: '50%' },
-  hex: { borderRadius: 12, clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' },
-  tri: { clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)', borderRadius: 0 },
-};
+const CELL = 36;
 
 export default function SeatSelector({
-  funcionId,
-  layoutConfig,
-  precioVip,
-  precioGeneral,
-  onChange,
-  maxSeats = 6,
+  funcionId, layoutConfig, precioVip, precioGeneral, onChange, maxSeats = 6,
 }) {
   const [asientosOcupados, setAsientosOcupados] = useState(new Set());
   const [seleccionados,    setSeleccionados]    = useState([]);
 
   useEffect(() => {
     if (!funcionId) return;
-    const ref = doc(db, 'asientosOcupados', funcionId);
-    const unsub = onSnapshot(ref, (snap) => {
+    const unsub = onSnapshot(doc(db, 'asientosOcupados', funcionId), snap => {
       if (snap.exists()) {
-        const data = snap.data();
-        setAsientosOcupados(new Set([
-          ...(data.ocupados   || []),
-          ...(data.reservados || []),
-        ]));
+        const d = snap.data();
+        setAsientosOcupados(new Set([...(d.ocupados||[]), ...(d.reservados||[])]));
       }
     });
     return unsub;
   }, [funcionId]);
 
-  useEffect(() => {
-    onChange?.(seleccionados);
-  }, [seleccionados]);
+  useEffect(() => { onChange?.(seleccionados); }, [seleccionados]);
 
   if (!layoutConfig) return null;
 
-  const { sillas = [], escenario = { x: 0, y: 0, w: 200, h: 80, forma: 'rect' } } = layoutConfig;
+  const { grid, cols, rows } = layoutConfig;
 
-  // Compatibilidad con formato antiguo (sin sillas libres)
-  const esFormatoNuevo = sillas.length > 0;
+  // Compatibilidad con formato antiguo (sillas libres)
+  if (!grid) {
+    return (
+      <div className="text-center py-8 text-gray-400 font-heading">
+        <p>El croquis de esta obra aún no ha sido configurado.</p>
+      </div>
+    );
+  }
 
-  const getSeatType = (num) => {
-    if (asientosOcupados.has(num))    return 'occupied';
-    const silla = sillas.find(s => s.num === num);
-    if (silla?.estado === 'inhabilitado') return 'blocked';
-    if (seleccionados.includes(num))      return 'selected';
-    if (silla?.estado === 'vip')          return 'vip';
-    return 'general';
+  const getSeatState = (num) => {
+    if (asientosOcupados.has(num)) return 'ocupado';
+    if (seleccionados.includes(num)) return 'seleccionado';
+    return 'libre';
   };
 
-  const handleSeatClick = (num) => {
-    const tipo = getSeatType(num);
-    if (tipo === 'occupied' || tipo === 'blocked') return;
+  const handleClick = (cell) => {
+    if (cell.tipo === 'vacio' || cell.tipo === 'escenario' || cell.tipo === 'inhabilitado') return;
+    const num = cell.num;
+    const state = getSeatState(num);
+    if (state === 'ocupado') return;
     setSeleccionados(prev => {
       if (prev.includes(num)) return prev.filter(s => s !== num);
       if (prev.length >= maxSeats) return prev;
@@ -73,119 +60,99 @@ export default function SeatSelector({
   const calcTotal = () => {
     let total = 0;
     for (const num of seleccionados) {
-      const silla = sillas.find(s => s.num === num);
-      total += silla?.estado === 'vip' ? precioVip : precioGeneral;
+      // Buscar tipo en grid
+      let tipo = 'general';
+      for (const row of grid) {
+        for (const cell of row) {
+          if (cell.num === num) { tipo = cell.tipo; break; }
+        }
+      }
+      total += tipo === 'vip' ? precioVip : precioGeneral;
     }
     return total;
   };
 
-  const colorSilla = (tipo) => ({
-    general:  'bg-blue-50 border-cyan hover:bg-blue-100',
-    vip:      'bg-yellow-50 border-yellow-400 hover:bg-yellow-100',
-    selected: 'bg-azul border-azul text-white',
-    occupied: 'bg-gray-200 border-gray-300 opacity-60 cursor-not-allowed',
-    blocked:  'bg-gray-100 border-gray-200 opacity-40 cursor-not-allowed',
-  }[tipo] || 'bg-blue-50 border-cyan');
-
-  // Calcular dimensiones del canvas
-  const canvasW = esFormatoNuevo
-    ? Math.max(500, ...sillas.map(s => s.x + GRID + 20), escenario.x + escenario.w + 20)
-    : 500;
-  const canvasH = esFormatoNuevo
-    ? Math.max(400, ...sillas.map(s => s.y + GRID + 20), escenario.y + escenario.h + 20)
-    : 400;
-
-  const formaStyle = FORMAS[escenario.forma] || FORMAS.rect;
-
-  if (!esFormatoNuevo) {
-    return (
-      <div className="text-center py-8 text-gray-400 font-heading">
-        <p>El croquis de esta obra aún no ha sido configurado.</p>
-        <p className="text-sm mt-1">Contacta al administrador.</p>
-      </div>
-    );
-  }
+  const getCellStyle = (cell) => {
+    const esSilla = cell.tipo === 'general' || cell.tipo === 'vip';
+    if (!esSilla) return null;
+    const state = getSeatState(cell.num);
+    if (state === 'ocupado')      return { bg: '#e5e7eb', border: '#9ca3af', color: '#9ca3af', cursor: 'not-allowed' };
+    if (state === 'seleccionado') return { bg: '#3333CC', border: '#2222AA', color: 'white',   cursor: 'pointer' };
+    if (cell.tipo === 'vip')      return { bg: '#fef9c3', border: '#ca8a04', color: '#92400e', cursor: 'pointer' };
+    return { bg: '#e0f2fe', border: '#299FE3', color: '#0369a1', cursor: 'pointer' };
+  };
 
   return (
     <div className="space-y-6">
-      {/* Canvas libre — solo lectura para el comprador */}
-      <div className="overflow-auto border border-gray-200 rounded-2xl bg-white">
-        <div
-          style={{
-            position: 'relative',
-            width: canvasW,
-            height: canvasH,
-            backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
-            backgroundSize: `${GRID}px ${GRID}px`,
-          }}
-        >
-          {/* Escenario */}
-          <div style={{
-            position: 'absolute',
-            left: escenario.x,
-            top:  escenario.y,
-            width:  escenario.w,
-            height: escenario.h,
-            background: 'linear-gradient(135deg, #3333CC, #299FE3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontFamily: '"Bebas Neue", sans-serif',
-            fontSize: 14,
-            letterSpacing: 2,
-            boxShadow: '0 4px 20px rgba(51,51,204,0.3)',
-            ...formaStyle,
-          }}>
-            {escenario.forma === 'tri' ? <span style={{ marginTop: 24 }}>ESCENARIO</span> : 'ESCENARIO'}
-          </div>
+      {/* Grid */}
+      <div className="overflow-auto">
+        <div style={{ display: 'inline-block', userSelect: 'none' }}>
+          {grid.map((row, r) => (
+            <div key={r} style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
+              {row.map((cell, c) => {
+                const esSilla = cell.tipo === 'general' || cell.tipo === 'vip';
+                const esEsc   = cell.tipo === 'escenario';
+                const style   = esSilla ? getCellStyle(cell) : null;
 
-          {/* Sillas */}
-          {sillas.map(s => {
-            const tipo = getSeatType(s.num);
-            return (
-              <button
-                key={s.id}
-                onClick={() => handleSeatClick(s.num)}
-                disabled={tipo === 'occupied' || tipo === 'blocked'}
-                title={`Asiento ${s.num}${s.estado === 'vip' ? ' (VIP)' : ''}`}
-                style={{
-                  position: 'absolute',
-                  left: s.x,
-                  top:  s.y,
-                  width:  GRID - 4,
-                  height: GRID - 4,
-                }}
-                className={clsx(
-                  'rounded-lg border-2 text-xs font-bold transition-all flex items-center justify-center',
-                  colorSilla(tipo),
-                  tipo === 'selected' && 'scale-110 shadow-lg',
-                  tipo === 'vip' && 'font-heading',
-                )}
-              >
-                {s.num}
-              </button>
-            );
-          })}
+                return (
+                  <div key={c}
+                    onClick={() => handleClick(cell)}
+                    style={{
+                      width:  CELL,
+                      height: CELL,
+                      flexShrink: 0,
+                      background: esEsc ? 'linear-gradient(135deg,#3333CC,#299FE3)'
+                        : esSilla ? style.bg
+                        : cell.tipo === 'inhabilitado' ? '#f3f4f6'
+                        : 'transparent',
+                      border: `1.5px solid ${
+                        esEsc   ? '#2222AA'
+                        : esSilla ? style.border
+                        : cell.tipo === 'inhabilitado' ? '#d1d5db'
+                        : '#f3f4f6'
+                      }`,
+                      borderRadius: esEsc ? 4 : esSilla ? 8 : 3,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: esSilla ? style.cursor : 'default',
+                      transition: 'background 0.15s, transform 0.1s',
+                      transform: esSilla && getSeatState(cell.num) === 'seleccionado' ? 'scale(1.1)' : 'scale(1)',
+                      boxShadow: esSilla && getSeatState(cell.num) === 'seleccionado' ? '0 2px 8px rgba(51,51,204,0.4)' : 'none',
+                    }}
+                  >
+                    {esSilla && (
+                      <span style={{
+                        fontSize: cell.num.length > 2 ? 9 : 11,
+                        fontFamily: '"Bebas Neue",sans-serif',
+                        color: style.color, fontWeight: 'bold', lineHeight: 1,
+                      }}>
+                        {cell.num}
+                      </span>
+                    )}
+                    {esEsc && (
+                      <span style={{ fontSize: 8, fontFamily: '"Bebas Neue",sans-serif', color: 'white', letterSpacing: 1 }}>
+                        ESC
+                      </span>
+                    )}
+                    {cell.tipo === 'inhabilitado' && (
+                      <span style={{ fontSize: 11, color: '#d1d5db' }}>✕</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Leyenda */}
-      <div className="flex flex-wrap justify-center gap-4 py-4 border-t border-gray-100">
-        {[
-          { tipo: 'general',  label: 'General',   cls: 'bg-blue-50 border-cyan border-2' },
-          { tipo: 'vip',      label: 'VIP',        cls: 'bg-yellow-50 border-yellow-400 border-2' },
-          { tipo: 'selected', label: 'Selec.',     cls: 'bg-azul border-azul border-2' },
-          { tipo: 'occupied', label: 'Ocupado',    cls: 'bg-gray-200 border-gray-300 border-2 opacity-60' },
-        ].map(({ label, cls }) => (
-          <div key={label} className="flex items-center gap-2">
-            <div className={clsx('w-5 h-5 rounded', cls)} />
-            <span className="text-xs text-gray-500 font-heading">{label}</span>
-          </div>
-        ))}
+      <div className="flex flex-wrap justify-center gap-4 py-4 border-t border-gray-100 text-xs text-gray-500 font-heading">
+        <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded border-2 border-cyan bg-cyan/20 inline-block" /> General</span>
+        <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded border-2 border-yellow-400 bg-yellow-100 inline-block" /> VIP</span>
+        <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded bg-azul inline-block" /> Seleccionado</span>
+        <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded border-2 border-gray-300 bg-gray-200 inline-block opacity-60" /> Ocupado</span>
       </div>
 
-      {/* Resumen selección */}
+      {/* Resumen */}
       {seleccionados.length > 0 && (
         <div className="bg-azul/5 border border-azul/15 rounded-2xl p-5">
           <div className="flex items-start gap-3">
@@ -206,7 +173,7 @@ export default function SeatSelector({
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-azul/15">
                 <span className="text-sm text-gray-600">Total estimado:</span>
-                <span className="text-2xl text-azul font-bold" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>
+                <span className="text-2xl text-azul font-bold" style={{ fontFamily: '"Bebas Neue",sans-serif' }}>
                   ${calcTotal()} <span className="text-sm font-normal text-gray-400">USD</span>
                 </span>
               </div>

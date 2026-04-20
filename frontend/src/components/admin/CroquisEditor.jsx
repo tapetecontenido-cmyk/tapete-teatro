@@ -1,285 +1,257 @@
 // src/components/admin/CroquisEditor.jsx
-import { useState, useRef, useCallback, useEffect } from 'react';
+// Editor de croquis por cuadrícula
+import { useState, useEffect, useCallback } from 'react';
 import { clsx } from 'clsx';
-import { Plus, Trash2, RotateCcw, Square, Circle, Triangle, Hexagon } from 'lucide-react';
+import { RotateCcw, Plus, Minus } from 'lucide-react';
 
-const FORMAS_ESCENARIO = [
-  { id: 'rect',  label: 'Rect',   icon: <Square size={12} /> },
-  { id: 'round', label: 'Oval',   icon: <Circle size={12} /> },
-  { id: 'hex',   label: 'Hex',    icon: <Hexagon size={12} /> },
-  { id: 'tri',   label: 'Tri',    icon: <Triangle size={12} /> },
+const CELL = 36; // px por celda
+
+// Tipos de celda
+const TIPOS = {
+  vacio:       { bg: 'transparent', border: '#e5e7eb',  label: '' },
+  escenario:   { bg: '#3333CC',     border: '#2222AA',  label: 'ESC' },
+  general:     { bg: '#e0f2fe',     border: '#299FE3',  label: '' },
+  vip:         { bg: '#fef9c3',     border: '#ca8a04',  label: '★' },
+  inhabilitado:{ bg: '#f3f4f6',     border: '#d1d5db',  label: '✕' },
+};
+
+const HERRAMIENTAS = [
+  { id: 'escenario',    label: 'Escenario',    color: 'bg-azul text-white' },
+  { id: 'general',      label: 'Silla general', color: 'bg-cyan/20 text-cyan border border-cyan' },
+  { id: 'vip',          label: 'Silla VIP',     color: 'bg-yellow-100 text-yellow-700 border border-yellow-400' },
+  { id: 'inhabilitado', label: 'Inhabilitado',  color: 'bg-gray-100 text-gray-500 border border-gray-300' },
+  { id: 'borrar',       label: 'Borrar',        color: 'bg-red-50 text-red-400 border border-red-200' },
 ];
 
-const GRID = 32;
-
-function snap(v) { return Math.round(v / GRID) * GRID; }
-
-function EscenarioShape({ forma, w, h }) {
-  const base = {
-    width: w, height: h,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'linear-gradient(135deg,#3333CC,#299FE3)',
-    color: 'white', fontFamily: '"Bebas Neue",sans-serif',
-    fontSize: 11, letterSpacing: 2, userSelect: 'none',
-    boxShadow: '0 3px 12px rgba(51,51,204,0.35)',
-  };
-  if (forma === 'round') return <div style={{ ...base, borderRadius: '50%' }}>ESC</div>;
-  if (forma === 'hex')   return <div style={{ ...base, borderRadius: 8, clipPath: 'polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%)' }}>ESC</div>;
-  if (forma === 'tri')   return <div style={{ ...base, clipPath: 'polygon(50% 0%,100% 100%,0% 100%)', borderRadius: 0 }}><span style={{ marginTop: 20, fontSize: 9 }}>ESC</span></div>;
-  return <div style={{ ...base, borderRadius: 8 }}>ESCENARIO</div>;
-}
-
 export default function CroquisEditor({ config, onChange }) {
-  const canvasRef = useRef(null);
-  const dragging  = useRef(null);
+  const COLS_DEFAULT = 14;
+  const ROWS_DEFAULT = 10;
 
-  const [sillas,   setSillas]   = useState(() => config?.sillas   || []);
-  const [escenario, setEscenario] = useState(() => config?.escenario || { x: 80, y: 20, w: 160, h: 56, forma: 'rect' });
-  const [tool,     setTool]     = useState('select');
-  const [selected, setSelected] = useState(null);
-  const [editNum,  setEditNum]  = useState('');
-  const [nextNum,  setNextNum]  = useState(() => {
-    const nums = (config?.sillas || []).map(s => parseInt(s.num) || 0);
-    return nums.length > 0 ? Math.max(...nums) + 1 : 1;
+  // Inicializar grid desde config
+  const initGrid = () => {
+    const cols = config?.cols || COLS_DEFAULT;
+    const rows = config?.rows || ROWS_DEFAULT;
+    if (config?.grid?.length === rows && config?.grid?.[0]?.length === cols) {
+      return config.grid.map(row => row.map(cell => ({ ...cell })));
+    }
+    return Array.from({ length: rows }, () =>
+      Array.from({ length: cols }, () => ({ tipo: 'vacio', num: '' }))
+    );
+  };
+
+  const [cols,      setCols]      = useState(() => config?.cols || COLS_DEFAULT);
+  const [rows,      setRows]      = useState(() => config?.rows || ROWS_DEFAULT);
+  const [grid,      setGrid]      = useState(initGrid);
+  const [tool,      setTool]      = useState('escenario');
+  const [painting, setPainting]  = useState(false);
+  const [nextNum,   setNextNum]   = useState(() => {
+    if (!config?.grid) return 1;
+    let max = 0;
+    config.grid.forEach(row => row.forEach(cell => {
+      const n = parseInt(cell.num);
+      if (!isNaN(n) && n > max) max = n;
+    }));
+    return max + 1;
   });
 
+  // Sync hacia afuera
   useEffect(() => {
-    onChange?.({ ...config, sillas, escenario });
-  }, [sillas, escenario]);
+    onChange?.({ ...config, grid, cols, rows });
+  }, [grid, cols, rows]);
 
-  const handleMouseDown = useCallback((e) => {
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    if (tool === 'add') {
-      const nueva = { id: Date.now(), x: Math.max(0, snap(mx - GRID/2)), y: Math.max(0, snap(my - GRID/2)), num: String(nextNum), estado: 'general' };
-      setSillas(prev => [...prev, nueva]);
-      setNextNum(n => n + 1);
-      setSelected(nueva.id);
-      setEditNum(String(nextNum));
-      return;
-    }
-
-    // Click en escenario
-    if (mx >= escenario.x && mx <= escenario.x + escenario.w && my >= escenario.y && my <= escenario.y + escenario.h) {
-      dragging.current = { type: 'escenario', offsetX: mx - escenario.x, offsetY: my - escenario.y };
-      setSelected(null);
-      return;
-    }
-
-    // Click en silla
-    for (const s of [...sillas].reverse()) {
-      if (mx >= s.x && mx <= s.x + GRID - 2 && my >= s.y && my <= s.y + GRID - 2) {
-        dragging.current = { type: 'silla', id: s.id, offsetX: mx - s.x, offsetY: my - s.y };
-        setSelected(s.id);
-        setEditNum(s.num);
-        return;
-      }
-    }
-    setSelected(null);
-  }, [tool, sillas, escenario, nextNum]);
-
-  const handleMouseMove = useCallback((e) => {
-    if (!dragging.current || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    if (dragging.current.type === 'escenario') {
-      setEscenario(prev => ({ ...prev, x: Math.max(0, snap(mx - dragging.current.offsetX)), y: Math.max(0, snap(my - dragging.current.offsetY)) }));
-    } else {
-      setSillas(prev => prev.map(s => s.id === dragging.current.id
-        ? { ...s, x: Math.max(0, snap(mx - dragging.current.offsetX)), y: Math.max(0, snap(my - dragging.current.offsetY)) }
-        : s
-      ));
-    }
+  // Resize grid cuando cambian cols/rows
+  const resizeGrid = useCallback((newCols, newRows) => {
+    setGrid(prev => {
+      return Array.from({ length: newRows }, (_, r) =>
+        Array.from({ length: newCols }, (_, c) =>
+          prev[r]?.[c] ?? { tipo: 'vacio', num: '' }
+        )
+      );
+    });
   }, []);
 
-  const handleMouseUp = useCallback(() => { dragging.current = null; }, []);
-
-  const eliminarSilla = (id) => { setSillas(prev => prev.filter(s => s.id !== id)); setSelected(null); };
-
-  const toggleEstado = (id) => {
-    setSillas(prev => prev.map(s => {
-      if (s.id !== id) return s;
-      const ciclo = { general: 'vip', vip: 'inhabilitado', inhabilitado: 'general' };
-      return { ...s, estado: ciclo[s.estado] || 'general' };
-    }));
+  const setColunas = (n) => {
+    const v = Math.max(5, Math.min(20, n));
+    setCols(v); resizeGrid(v, rows);
+  };
+  const setFilas = (n) => {
+    const v = Math.max(4, Math.min(18, n));
+    setRows(v); resizeGrid(cols, v);
   };
 
-  const agregarFila = () => {
-    const filaY = sillas.length > 0 ? Math.max(...sillas.map(s => s.y)) + GRID + 6 : 120;
-    const nuevas = Array.from({ length: 6 }, (_, i) => ({
-      id: Date.now() + i, x: 20 + i * (GRID + 4), y: filaY, num: String(nextNum + i), estado: 'general',
-    }));
-    setSillas(prev => [...prev, ...nuevas]);
-    setNextNum(n => n + 6);
-  };
+  // Pintar celda
+  const pintarCelda = useCallback((r, c) => {
+    setGrid(prev => {
+      const next = prev.map(row => row.map(cell => ({ ...cell })));
+      const cell = next[r][c];
+
+      if (tool === 'borrar') {
+        next[r][c] = { tipo: 'vacio', num: '' };
+      } else if (tool === 'escenario') {
+        next[r][c] = { tipo: 'escenario', num: '' };
+      } else if (tool === 'inhabilitado') {
+        next[r][c] = { tipo: 'inhabilitado', num: '' };
+      } else if (tool === 'general' || tool === 'vip') {
+        // Si ya es silla del mismo tipo, no cambiar número
+        if (cell.tipo === tool) return prev;
+        // Si era otro tipo, asignar nuevo número
+        const num = cell.tipo === 'general' || cell.tipo === 'vip' ? cell.num : String(nextNum);
+        next[r][c] = { tipo: tool, num };
+        if (!(cell.tipo === 'general' || cell.tipo === 'vip')) {
+          setNextNum(n => n + 1);
+        }
+      }
+      return next;
+    });
+  }, [tool, nextNum]);
+
+  const handleMouseDown = (r, c) => { setPainting(true); pintarCelda(r, c); };
+  const handleMouseEnter = (r, c) => { if (painting) pintarCelda(r, c); };
+  const handleMouseUp = () => setPainting(false);
 
   const limpiar = () => {
-    if (!confirm('¿Limpiar todo?')) return;
-    setSillas([]); setNextNum(1); setSelected(null);
-    setEscenario({ x: 80, y: 20, w: 160, h: 56, forma: escenario.forma });
+    if (!confirm('¿Limpiar todo el croquis?')) return;
+    setGrid(Array.from({ length: rows }, () =>
+      Array.from({ length: cols }, () => ({ tipo: 'vacio', num: '' }))
+    ));
+    setNextNum(1);
   };
 
-  const sillaSel = sillas.find(s => s.id === selected);
+  const renumerar = () => {
+    let n = 1;
+    setGrid(prev => prev.map(row => row.map(cell => {
+      if (cell.tipo === 'general' || cell.tipo === 'vip') {
+        const updated = { ...cell, num: String(n++) };
+        return updated;
+      }
+      return cell;
+    })));
+    setNextNum(n);
+  };
 
-  const colorSilla = (estado) => ({
-    general:      { bg: '#e0f2fe', border: '#299FE3', text: '#0369a1' },
-    vip:          { bg: '#fef9c3', border: '#ca8a04', text: '#92400e' },
-    inhabilitado: { bg: '#f3f4f6', border: '#d1d5db', text: '#9ca3af' },
-  }[estado] || { bg: '#e0f2fe', border: '#299FE3', text: '#0369a1' });
-
-  const canvasW = Math.max(500, ...sillas.map(s => s.x + GRID + 16), escenario.x + escenario.w + 16);
-  const canvasH = Math.max(320, ...sillas.map(s => s.y + GRID + 16), escenario.y + escenario.h + 16);
+  // Stats
+  const sillasTotal    = grid.flat().filter(c => c.tipo === 'general' || c.tipo === 'vip').length;
+  const sillasVip      = grid.flat().filter(c => c.tipo === 'vip').length;
+  const sillasInh      = grid.flat().filter(c => c.tipo === 'inhabilitado').length;
+  const celdasEscenario = grid.flat().filter(c => c.tipo === 'escenario').length;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" onMouseUp={handleMouseUp}>
 
-      {/* Toolbar compacta */}
-      <div className="flex flex-wrap gap-2 items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
-        {/* Herramienta */}
-        <div className="flex gap-1 bg-white rounded-md p-0.5 border border-gray-200">
-          <button type="button" onClick={() => setTool('select')}
-            className={clsx('px-2 py-1 rounded text-xs font-heading font-bold transition-all',
-              tool === 'select' ? 'bg-azul text-white' : 'text-gray-600 hover:bg-gray-100')}>
-            ↖ Mover
+      {/* Controles de tamaño */}
+      <div className="flex flex-wrap gap-3 items-center p-2.5 bg-gray-50 rounded-xl border border-gray-200">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 font-heading font-bold">Columnas:</span>
+          <button type="button" onClick={() => setColunas(cols - 1)} className="w-6 h-6 rounded bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100"><Minus size={10} /></button>
+          <span className="text-xs font-heading font-bold w-5 text-center">{cols}</span>
+          <button type="button" onClick={() => setColunas(cols + 1)} className="w-6 h-6 rounded bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100"><Plus size={10} /></button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 font-heading font-bold">Filas:</span>
+          <button type="button" onClick={() => setFilas(rows - 1)} className="w-6 h-6 rounded bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100"><Minus size={10} /></button>
+          <span className="text-xs font-heading font-bold w-5 text-center">{rows}</span>
+          <button type="button" onClick={() => setFilas(rows + 1)} className="w-6 h-6 rounded bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100"><Plus size={10} /></button>
+        </div>
+        <div className="flex gap-1.5 ml-auto">
+          <button type="button" onClick={renumerar} className="px-2.5 py-1 rounded-lg bg-azul/10 text-azul text-xs font-heading font-bold hover:bg-azul/20 transition-colors">
+            # Renumerar
           </button>
-          <button type="button" onClick={() => setTool('add')}
-            className={clsx('px-2 py-1 rounded text-xs font-heading font-bold transition-all',
-              tool === 'add' ? 'bg-azul text-white' : 'text-gray-600 hover:bg-gray-100')}>
-            + Silla
+          <button type="button" onClick={limpiar} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-50 text-red-400 text-xs font-heading font-bold hover:bg-red-100 transition-colors">
+            <RotateCcw size={10} /> Limpiar
           </button>
         </div>
+      </div>
 
-        {/* Forma escenario */}
-        <div className="flex gap-0.5 bg-white rounded-md p-0.5 border border-gray-200">
-          {FORMAS_ESCENARIO.map(({ id, label, icon }) => (
-            <button key={id} type="button" title={label}
-              onClick={() => setEscenario(prev => ({ ...prev, forma: id }))}
-              className={clsx('p-1.5 rounded transition-all',
-                escenario.forma === id ? 'bg-azul text-white' : 'text-gray-500 hover:bg-gray-100')}>
-              {icon}
-            </button>
+      {/* Herramientas */}
+      <div className="flex flex-wrap gap-1.5">
+        {HERRAMIENTAS.map(h => (
+          <button key={h.id} type="button" onClick={() => setTool(h.id)}
+            className={clsx('px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all',
+              h.color,
+              tool === h.id ? 'ring-2 ring-offset-1 ring-azul scale-105' : 'opacity-70 hover:opacity-100')}>
+            {h.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Grid */}
+      <div className="overflow-auto border border-gray-200 rounded-xl bg-white p-3" style={{ maxHeight: 400 }}>
+        <div
+          style={{ display: 'inline-block', userSelect: 'none' }}
+          onMouseLeave={() => setPainting(false)}
+        >
+          {grid.map((row, r) => (
+            <div key={r} style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
+              {row.map((cell, c) => {
+                const tipo = TIPOS[cell.tipo] || TIPOS.vacio;
+                const esSilla = cell.tipo === 'general' || cell.tipo === 'vip';
+                const esEsc   = cell.tipo === 'escenario';
+                return (
+                  <div
+                    key={c}
+                    onMouseDown={() => handleMouseDown(r, c)}
+                    onMouseEnter={() => handleMouseEnter(r, c)}
+                    style={{
+                      width:  CELL,
+                      height: CELL,
+                      background: tipo.bg,
+                      border: `1.5px solid ${tipo.border}`,
+                      borderRadius: esEsc ? 4 : esSilla ? 8 : 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'crosshair',
+                      flexShrink: 0,
+                      transition: 'background 0.1s',
+                      boxShadow: esEsc ? '0 2px 8px rgba(51,51,204,0.3)' : 'none',
+                    }}
+                  >
+                    {esSilla && (
+                      <span style={{
+                        fontSize: cell.num.length > 2 ? 9 : 11,
+                        fontFamily: '"Bebas Neue",sans-serif',
+                        color: cell.tipo === 'vip' ? '#92400e' : '#0369a1',
+                        fontWeight: 'bold',
+                        lineHeight: 1,
+                      }}>
+                        {cell.num}
+                      </span>
+                    )}
+                    {esEsc && (
+                      <span style={{ fontSize: 8, fontFamily: '"Bebas Neue",sans-serif', color: 'white', letterSpacing: 1 }}>
+                        ESC
+                      </span>
+                    )}
+                    {cell.tipo === 'inhabilitado' && (
+                      <span style={{ fontSize: 12, color: '#9ca3af' }}>✕</span>
+                    )}
+                    {cell.tipo === 'vacio' && (
+                      <span style={{ fontSize: 8, color: '#e5e7eb' }}>·</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ))}
         </div>
-
-        {/* Tamaño escenario */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-400 font-heading">W</span>
-          <input type="number" value={escenario.w} min={64} max={320} step={GRID}
-            onChange={e => setEscenario(prev => ({ ...prev, w: Number(e.target.value) }))}
-            className="w-14 text-xs border border-gray-200 rounded px-1.5 py-1 text-center" />
-          <span className="text-xs text-gray-400">×</span>
-          <span className="text-xs text-gray-400 font-heading">H</span>
-          <input type="number" value={escenario.h} min={32} max={200} step={GRID}
-            onChange={e => setEscenario(prev => ({ ...prev, h: Number(e.target.value) }))}
-            className="w-14 text-xs border border-gray-200 rounded px-1.5 py-1 text-center" />
-        </div>
-
-        <div className="flex gap-1 ml-auto">
-          <button type="button" onClick={agregarFila}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan/10 text-cyan hover:bg-cyan/20 text-xs font-heading font-bold transition-colors">
-            <Plus size={11} /> Fila
-          </button>
-          <button type="button" onClick={limpiar}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 text-xs font-heading font-bold transition-colors">
-            <RotateCcw size={11} /> Limpiar
-          </button>
-        </div>
       </div>
 
-      {/* Panel silla seleccionada — siempre visible arriba del canvas */}
-      {sillaSel ? (
-        <div className="flex flex-wrap items-center gap-2 p-2.5 bg-azul/5 border border-azul/20 rounded-lg">
-          <span className="text-xs font-heading font-bold text-azul">Silla {sillaSel.num}:</span>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">#</span>
-            <input type="text" value={editNum}
-              onChange={e => { setSillas(prev => prev.map(s => s.id === sillaSel.id ? { ...s, num: e.target.value } : s)); setEditNum(e.target.value); }}
-              className="w-14 text-xs border border-azul/30 rounded px-2 py-1 text-center font-heading font-bold" />
-          </div>
-          <button type="button" onClick={() => toggleEstado(sillaSel.id)}
-            className={clsx('px-2 py-1 rounded text-xs font-heading font-bold transition-colors',
-              sillaSel.estado === 'general' ? 'bg-cyan/20 text-cyan' :
-              sillaSel.estado === 'vip'     ? 'bg-yellow-100 text-yellow-700' :
-                                              'bg-gray-100 text-gray-500')}>
-            {sillaSel.estado === 'general' ? '⚪ General' : sillaSel.estado === 'vip' ? '⭐ VIP' : '🚫 Inh.'}
-          </button>
-          <button type="button" onClick={() => eliminarSilla(sillaSel.id)}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 text-xs font-heading font-bold transition-colors ml-auto">
-            <Trash2 size={11} /> Eliminar
-          </button>
-        </div>
-      ) : (
-        <div className="px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
-          <p className="text-xs text-gray-400 font-heading">
-            {tool === 'add' ? '✨ Clic en el canvas para colocar una silla' : '↖ Clic en una silla para seleccionarla · Arrastra para mover'}
-          </p>
-        </div>
-      )}
-
-      {/* Canvas con scroll */}
-      <div className="border border-gray-200 rounded-xl overflow-auto bg-white" style={{ maxHeight: 380, maxWidth: '100%' }}>
-        <div
-          ref={canvasRef}
-          style={{
-            position: 'relative',
-            width:  canvasW,
-            height: canvasH,
-            backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
-            backgroundSize:  `${GRID}px ${GRID}px`,
-            cursor: tool === 'add' ? 'crosshair' : 'default',
-            flexShrink: 0,
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          {/* Escenario */}
-          <div style={{ position: 'absolute', left: escenario.x, top: escenario.y, width: escenario.w, height: escenario.h, cursor: 'grab', zIndex: 10 }}>
-            <EscenarioShape forma={escenario.forma} w={escenario.w} h={escenario.h} />
-          </div>
-
-          {/* Sillas */}
-          {sillas.map(s => {
-            const col   = colorSilla(s.estado);
-            const isSel = s.id === selected;
-            return (
-              <div key={s.id} style={{
-                position: 'absolute', left: s.x, top: s.y,
-                width: GRID - 4, height: GRID - 4,
-                background: col.bg,
-                border: `2px solid ${isSel ? '#3333CC' : col.border}`,
-                borderRadius: 6,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontFamily: '"Bebas Neue",sans-serif', color: col.text,
-                cursor: tool === 'select' ? 'grab' : 'crosshair',
-                zIndex: isSel ? 20 : 5,
-                boxShadow: isSel ? '0 0 0 3px rgba(51,51,204,0.25)' : 'none',
-                userSelect: 'none',
-              }}>
-                {s.num}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Stats */}
+      {/* Stats y leyenda */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 font-heading">
-        <div className="flex gap-3">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border-2 border-cyan bg-cyan/20 inline-block" /> General</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border-2 border-yellow-500 bg-yellow-100 inline-block" /> VIP</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border-2 border-gray-300 bg-gray-100 inline-block" /> Inh.</span>
+        <div className="flex gap-3 flex-wrap">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-azul inline-block" /> Escenario ({celdasEscenario})</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-cyan bg-cyan/20 inline-block" /> General</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-yellow-400 bg-yellow-100 inline-block" /> VIP</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-gray-300 bg-gray-100 inline-block" /> Inh.</span>
         </div>
         <span className="font-bold text-gray-700">
-          {sillas.filter(s => s.estado !== 'inhabilitado').length} activas · {sillas.filter(s => s.estado === 'vip').length} VIP
+          {sillasTotal - sillasInh} activas · {sillasVip} VIP
         </span>
       </div>
+
+      <p className="text-xs text-gray-400 font-heading">
+        💡 Selecciona una herramienta y haz clic (o arrastra) sobre las celdas para diseñar el croquis
+      </p>
     </div>
   );
 }
