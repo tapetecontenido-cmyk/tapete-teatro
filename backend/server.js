@@ -88,6 +88,13 @@ const limiterAuth = rateLimit({
   message: { error: 'Demasiados intentos de autenticación.' },
 });
 
+// Rate limiting para uploads
+const limiterUpload = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max:      20,
+  message: { error: 'Demasiadas subidas. Intenta en 15 minutos.' },
+});
+
 // ── Middleware: verificar token Firebase ───────────────────────────────
 const verificarToken = async (req, res, next) => {
   try {
