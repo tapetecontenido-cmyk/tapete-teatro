@@ -221,52 +221,7 @@ function CarruselObras({ obras }) {
 // ── Icono de máscara de teatro SVG ─────────────────────────────────────
 function MascaraTeatro() {
   return (
-    <svg viewBox="0 0 48 32" className="w-10 h-7" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Máscara feliz (izquierda) */}
-      <path d="M2 8 Q2 2 9 2 Q16 2 16 8 L16 18 Q16 26 9 26 Q2 26 2 18 Z"
-            fill="url(#mf)" stroke="#2222AA" strokeWidth="0.8"/>
-      {/* Ojos máscara feliz */}
-      <ellipse cx="6.5" cy="11" rx="1.5" ry="2" fill="#1a1a6e"/>
-      <ellipse cx="11.5" cy="11" rx="1.5" ry="2" fill="#1a1a6e"/>
-      {/* Sonrisa máscara feliz */}
-      <path d="M5.5 17 Q9 21 12.5 17" stroke="#1a1a6e" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
-      {/* Agujeros boca máscara feliz */}
-      <ellipse cx="9" cy="18.5" rx="2" ry="1" fill="#1a1a6e" opacity="0.3"/>
-      {/* Cinta máscara feliz */}
-      <path d="M2 13 L0 13" stroke="#2222AA" strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M16 13 L18 11 L20 13" stroke="#2222AA" strokeWidth="1" strokeLinecap="round" fill="none"/>
-      {/* Decoración máscara feliz */}
-      <path d="M4 5 Q9 3 14 5" stroke="#5555DD" strokeWidth="0.6" fill="none" opacity="0.6"/>
-
-      {/* Máscara triste (derecha) */}
-      <path d="M28 4 Q28 28 39 28 Q46 28 46 20 L46 12 Q46 4 39 4 Q32 4 28 4 Z"
-            fill="url(#mt)" stroke="#1a7ab5" strokeWidth="0.8"/>
-      {/* Ojos máscara triste */}
-      <ellipse cx="33" cy="13" rx="1.5" ry="2" fill="#0d4f7a"/>
-      <ellipse cx="41" cy="13" rx="1.5" ry="2" fill="#0d4f7a"/>
-      {/* Cejas tristes */}
-      <path d="M31 10 Q33 8.5 35 10" stroke="#0d4f7a" strokeWidth="1" strokeLinecap="round" fill="none"/>
-      <path d="M39 10 Q41 8.5 43 10" stroke="#0d4f7a" strokeWidth="1" strokeLinecap="round" fill="none"/>
-      {/* Boca triste */}
-      <path d="M32 21 Q37 17.5 42 21" stroke="#0d4f7a" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
-      {/* Agujero boca triste */}
-      <ellipse cx="37" cy="20" rx="2" ry="1" fill="#0d4f7a" opacity="0.3"/>
-      {/* Cinta máscara triste */}
-      <path d="M46 16 L48 16" stroke="#1a7ab5" strokeWidth="1.5" strokeLinecap="round"/>
-      {/* Decoración máscara triste */}
-      <path d="M30 7 Q37 5 44 7" stroke="#4ab0e8" strokeWidth="0.6" fill="none" opacity="0.6"/>
-
-      <defs>
-        <linearGradient id="mf" x1="2" y1="2" x2="16" y2="26" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#4444DD"/>
-          <stop offset="1" stopColor="#3333AA"/>
-        </linearGradient>
-        <linearGradient id="mt" x1="28" y1="4" x2="46" y2="28" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#299FE3"/>
-          <stop offset="1" stopColor="#1a7ab5"/>
-        </linearGradient>
-      </defs>
-    </svg>
+    <img src="/mascara-teatro.png" alt="Máscaras de teatro" className="w-10 h-10 object-contain" />
   );
 }
 

@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+* {
+  cursor: url('/cursor-tapete.png') 16 16, auto;
+}
+
+button, a, [role="button"] {
+  cursor: url('/cursor-tapete.png') 16 16, pointer;
+}
+
 /* ── Fuentes de Google Fonts (complementarias) ─────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700&display=swap');
 /* ── Fuentes de marca (self-hosted) ────────────────────────────────────── */
