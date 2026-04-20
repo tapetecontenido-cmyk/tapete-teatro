@@ -1,4 +1,5 @@
 // src/pages/admin/AdminCartelera.jsx
+import CroquisEditor from '../../components/admin/CroquisEditor';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -322,13 +323,9 @@ export default function AdminCartelera() {
                   {mostrarAsientos ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                 </button>
                 {mostrarAsientos && (
-  <div className="p-4 border-t border-gray-100 text-center">
-  <p className="text-sm text-gray-500 font-heading mb-3">El croquis se edita en una página dedicada.</p>
-  <a href={`/admin/croquis/${editando?.id}`} target="_blank" rel="noopener noreferrer"
-    className="btn-primary text-sm py-2 px-5 gap-2 inline-flex items-center">
-    <Settings size={15} /> Abrir editor de croquis
-  </a>
-</div>
+  <div className="p-4 border-t border-gray-100">
+    <CroquisEditor config={layoutConfig} onChange={setLayoutConfig} />
+  </div>
 )}
               </div>
             </div>
