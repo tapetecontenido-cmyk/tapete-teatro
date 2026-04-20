@@ -322,10 +322,14 @@ export default function AdminCartelera() {
                   {mostrarAsientos ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                 </button>
                 {mostrarAsientos && (
-                  <div className="p-4 border-t border-gray-100">
-                    <CroquisEditor config={layoutConfig} onChange={setLayoutConfig} />
-                  </div>
-                )}
+  <div className="p-4 border-t border-gray-100 text-center">
+    <p className="text-sm text-gray-500 font-heading mb-3">El croquis se edita en una página dedicada.</p>
+    <button type="button" onClick={() => window.open(`/admin/croquis/${editando?.id}`, '_blank')}
+      className="btn-primary text-sm py-2 px-5 gap-2">
+      <Settings size={15} /> Abrir editor de croquis
+    </button>
+  </div>
+)}
               </div>
             </div>
             <div className="p-6 border-t flex gap-3 sticky bottom-0 bg-white">
