@@ -34,8 +34,6 @@ const AdminTalleres     = lazy(() => import('./pages/admin/AdminTalleres'));
 const AdminNoticias     = lazy(() => import('./pages/admin/AdminNoticias'));
 const AdminUsuarios     = lazy(() => import('./pages/admin/AdminUsuarios'));
 const AdminConfiguracion= lazy(() => import('./pages/admin/AdminConfiguracion'));
-const CroquisEditorPage = lazy(() => import('./pages/admin/CroquisEditorPage'));
-
 // ── Spinner de carga ───────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -164,9 +162,6 @@ function AppRoutes() {
             </ProtectedRoute>
           } />
         </Route>
-
-        {/* ── Editor de croquis (página completa independiente) ── */}
-<Route path="/admin/croquis/:obraId" element={<CroquisEditorPage />} />
 
         {/* ── 404 ────────────────────────────────────────────────── */}
         <Route path="*" element={
