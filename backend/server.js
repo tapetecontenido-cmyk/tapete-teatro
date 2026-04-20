@@ -157,12 +157,6 @@ app.get('/api/tasa-bcv', async (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-// ── Subir archivo a Cloudinary ─────────────────────────────────────────
-const limiterUpload = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max:      20,
-  message: { error: 'Demasiadas subidas. Intenta en 15 minutos.' },
-});
 
 app.post('/api/upload', limiterUpload, upload.single('archivo'), async (req, res) => {
   // Validar tipo MIME
