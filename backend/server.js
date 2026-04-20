@@ -150,7 +150,18 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 // ── Subir archivo a Cloudinary ─────────────────────────────────────────
-app.post('/api/upload', upload.single('archivo'), async (req, res) => {
+const limiterUpload = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max:      20,
+  message: { error: 'Demasiadas subidas. Intenta en 15 minutos.' },
+});
+
+app.post('/api/upload', limiterUpload, upload.single('archivo'), async (req, res) => {
+  // Validar tipo MIME
+  const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  if (!req.file || !tiposPermitidos.includes(req.file.mimetype)) {
+    return res.status(400).json({ error: 'Tipo de archivo no permitido' });
+  }
   try {
     const resultado = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
