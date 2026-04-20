@@ -29,15 +29,28 @@ export default function CroquisEditor({ config, onChange }) {
 
   // Inicializar grid desde config
   const initGrid = () => {
-    const cols = config?.cols || COLS_DEFAULT;
-    const rows = config?.rows || ROWS_DEFAULT;
-    if (config?.grid?.length === rows && config?.grid?.[0]?.length === cols) {
-      return config.grid.map(row => row.map(cell => ({ ...cell })));
-    }
-    return Array.from({ length: rows }, () =>
+  const cols = config?.cols || COLS_DEFAULT;
+  const rows = config?.rows || ROWS_DEFAULT;
+  // Formato nuevo (array 2D)
+  if (config?.grid?.length === rows && Array.isArray(config?.grid?.[0])) {
+    return config.grid.map(row => row.map(cell => ({ ...cell })));
+  }
+  // Formato Firestore (array plano con _row/_col)
+  if (config?.grid?.length > 0 && config.grid[0]._row !== undefined) {
+    const grid2d = Array.from({ length: rows }, () =>
       Array.from({ length: cols }, () => ({ tipo: 'vacio', num: '' }))
     );
-  };
+    config.grid.forEach(cell => {
+      if (cell._row < rows && cell._col < cols) {
+        grid2d[cell._row][cell._col] = { tipo: cell.tipo, num: cell.num };
+      }
+    });
+    return grid2d;
+  }
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => ({ tipo: 'vacio', num: '' }))
+  );
+};
 
   const [cols,      setCols]      = useState(() => config?.cols || COLS_DEFAULT);
   const [rows,      setRows]      = useState(() => config?.rows || ROWS_DEFAULT);

@@ -144,25 +144,37 @@ export default function AdminCartelera() {
   };
 
   const handleGuardar = async () => {
-    if (!form.nombre) { toast.error('El nombre es requerido'); return; }
-    setGuardando(true);
-    try {
-      let posterUrl = editando?.posterUrl || '';
-      if (poster) posterUrl = await subirArchivo(poster, 'posters');
-      const sillasActivas = (layoutConfig.sillas || []).filter(s => s.estado !== 'inhabilitado').length;
-      const data = {
-        nombre: DOMPurify.sanitize(form.nombre.trim()), genero: form.genero,
-        descripcion: DOMPurify.sanitize(form.descripcion.trim()), director: DOMPurify.sanitize(form.director.trim()),
-        reparto: DOMPurify.sanitize(form.reparto.trim()), duracion: form.duracion,
-        precioGeneral: Number(form.precioGeneral) || 0, precioVip: Number(form.precioVip) || 0,
-        posterUrl, layoutConfig, activo: true, actualizadoEn: serverTimestamp(),
-      };
-      if (editando) { await updateDoc(doc(db, 'obras', editando.id), data); toast.success('Obra actualizada'); }
-      else { await addDoc(collection(db, 'obras'), { ...data, creadoEn: serverTimestamp() }); toast.success('Obra creada'); }
-      setModal(false);
-    } catch (err) { toast.error('Error: ' + err.message); }
-    finally { setGuardando(false); }
-  };
+  if (!form.nombre) { toast.error('El nombre es requerido'); return; }
+  setGuardando(true);
+  try {
+    let posterUrl = editando?.posterUrl || '';
+    if (poster) posterUrl = await subirArchivo(poster, 'posters');
+
+    // Aplanar grid para Firestore (no soporta arrays anidados)
+    const layoutConfigFirestore = layoutConfig.grid
+      ? {
+          ...layoutConfig,
+          grid: layoutConfig.grid.flat().map((cell, i) => ({
+            ...cell,
+            _row: Math.floor(i / (layoutConfig.cols || 14)),
+            _col: i % (layoutConfig.cols || 14),
+          })),
+        }
+      : layoutConfig;
+
+    const data = {
+      nombre: DOMPurify.sanitize(form.nombre.trim()), genero: form.genero,
+      descripcion: DOMPurify.sanitize(form.descripcion.trim()), director: DOMPurify.sanitize(form.director.trim()),
+      reparto: DOMPurify.sanitize(form.reparto.trim()), duracion: form.duracion,
+      precioGeneral: Number(form.precioGeneral) || 0, precioVip: Number(form.precioVip) || 0,
+      posterUrl, layoutConfig: layoutConfigFirestore, activo: true, actualizadoEn: serverTimestamp(),
+    };
+    if (editando) { await updateDoc(doc(db, 'obras', editando.id), data); toast.success('Obra actualizada'); }
+    else { await addDoc(collection(db, 'obras'), { ...data, creadoEn: serverTimestamp() }); toast.success('Obra creada'); }
+    setModal(false);
+  } catch (err) { toast.error('Error: ' + err.message); }
+  finally { setGuardando(false); }
+};
 
   const handleEliminar = async (id) => {
     if (!confirm('¿Desactivar esta obra?')) return;
