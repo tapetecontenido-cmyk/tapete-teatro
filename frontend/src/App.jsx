@@ -161,12 +161,14 @@ function AppRoutes() {
               <AdminConfiguracion />
             </ProtectedRoute>
           } />
-          <Route path="croquis/:obraId" element={
-            <ProtectedRoute requiredRole="admin">
-              <CroquisEditorPage />
-            </ProtectedRoute>
-          } />
         </Route>
+
+        {/* ── Editor de croquis (página completa independiente) ── */}
+        <Route path="/admin/croquis/:obraId" element={
+          <ProtectedRoute requiredRole="admin">
+            <CroquisEditorPage />
+          </ProtectedRoute>
+        } />
 
         {/* ── 404 ────────────────────────────────────────────────── */}
         <Route path="*" element={
