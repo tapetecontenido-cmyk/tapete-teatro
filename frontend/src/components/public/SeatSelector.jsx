@@ -2,10 +2,37 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { clsx } from 'clsx';
 import { Info } from 'lucide-react';
 
 const CELL = 36;
+
+// Reconstruye el grid 2D desde cualquier formato
+function reconstruirGrid(layoutConfig) {
+  if (!layoutConfig?.grid) return null;
+  const rawGrid = layoutConfig.grid;
+  const cols = layoutConfig.cols || 14;
+  const rows = layoutConfig.rows || 10;
+
+  // Ya es array 2D
+  if (Array.isArray(rawGrid[0])) return rawGrid;
+
+  // Es array plano con _row/_col (formato Firestore)
+  if (rawGrid[0]?._row !== undefined) {
+    const grid2d = Array.from({ length: rows }, () =>
+      Array.from({ length: cols }, () => ({ tipo: 'vacio', num: '' }))
+    );
+    rawGrid.forEach(cell => {
+      const r = cell._row;
+      const c = cell._col;
+      if (r < rows && c < cols) {
+        grid2d[r][c] = { tipo: cell.tipo, num: cell.num };
+      }
+    });
+    return grid2d;
+  }
+
+  return null;
+}
 
 export default function SeatSelector({
   funcionId, layoutConfig, precioVip, precioGeneral, onChange, maxSeats = 6,
@@ -28,13 +55,13 @@ export default function SeatSelector({
 
   if (!layoutConfig) return null;
 
-  const { grid, cols, rows } = layoutConfig;
+  const grid = reconstruirGrid(layoutConfig);
 
-  // Compatibilidad con formato antiguo (sillas libres)
   if (!grid) {
     return (
       <div className="text-center py-8 text-gray-400 font-heading">
         <p>El croquis de esta obra aún no ha sido configurado.</p>
+        <p className="text-sm mt-1">Configúralo desde el panel admin.</p>
       </div>
     );
   }
@@ -46,7 +73,7 @@ export default function SeatSelector({
   };
 
   const handleClick = (cell) => {
-    if (cell.tipo === 'vacio' || cell.tipo === 'escenario' || cell.tipo === 'inhabilitado') return;
+    if (!cell || cell.tipo === 'vacio' || cell.tipo === 'escenario' || cell.tipo === 'inhabilitado') return;
     const num = cell.num;
     const state = getSeatState(num);
     if (state === 'ocupado') return;
@@ -60,14 +87,13 @@ export default function SeatSelector({
   const calcTotal = () => {
     let total = 0;
     for (const num of seleccionados) {
-      // Buscar tipo en grid
       let tipo = 'general';
       for (const row of grid) {
         for (const cell of row) {
           if (cell.num === num) { tipo = cell.tipo; break; }
         }
       }
-      total += tipo === 'vip' ? precioVip : precioGeneral;
+      total += tipo === 'vip' ? (precioVip || 0) : (precioGeneral || 0);
     }
     return total;
   };
@@ -93,7 +119,6 @@ export default function SeatSelector({
                 const esSilla = cell.tipo === 'general' || cell.tipo === 'vip';
                 const esEsc   = cell.tipo === 'escenario';
                 const style   = esSilla ? getCellStyle(cell) : null;
-
                 return (
                   <div key={c}
                     onClick={() => handleClick(cell)}
@@ -101,13 +126,13 @@ export default function SeatSelector({
                       width:  CELL,
                       height: CELL,
                       flexShrink: 0,
-                      background: esEsc ? 'linear-gradient(135deg,#3333CC,#299FE3)'
-                        : esSilla ? style.bg
+                      background: esEsc    ? 'linear-gradient(135deg,#3333CC,#299FE3)'
+                        : esSilla          ? style.bg
                         : cell.tipo === 'inhabilitado' ? '#f3f4f6'
                         : 'transparent',
                       border: `1.5px solid ${
-                        esEsc   ? '#2222AA'
-                        : esSilla ? style.border
+                        esEsc              ? '#2222AA'
+                        : esSilla          ? style.border
                         : cell.tipo === 'inhabilitado' ? '#d1d5db'
                         : '#f3f4f6'
                       }`,
@@ -121,7 +146,7 @@ export default function SeatSelector({
                   >
                     {esSilla && (
                       <span style={{
-                        fontSize: cell.num.length > 2 ? 9 : 11,
+                        fontSize: cell.num?.length > 2 ? 9 : 11,
                         fontFamily: '"Bebas Neue",sans-serif',
                         color: style.color, fontWeight: 'bold', lineHeight: 1,
                       }}>
