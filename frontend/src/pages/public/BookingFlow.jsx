@@ -122,14 +122,14 @@ export default function BookingFlow() {
   };
 
   const calcTotal = () => {
-    let total = 0;
-    const vipFilas = obra?.layoutConfig?.vipFilas || [];
-    for (const seatId of seatsElegidos) {
-      const fila = seatId[0];
-      total += vipFilas.includes(fila) ? (obra?.precioVip || 0) : (obra?.precioGeneral || 0);
-    }
-    return total;
-  };
+  let total = 0;
+  const grid = obra?.layoutConfig?.grid || [];
+  for (const num of seatsElegidos) {
+    const cell = grid.find(c => c.num === num);
+    total += cell?.tipo === 'vip' ? (obra?.precioVip || 0) : (obra?.precioGeneral || 0);
+  }
+  return total;
+};
 
   const enviarReserva = async () => {
     if (!validarPaso3()) return;
@@ -257,10 +257,8 @@ try {
               <span className="text-sm text-gray-400 font-normal ml-2">(máx. 6)</span>
             </h2>
             <SeatSelector
-              funcionId={funcionId}
-              layoutConfig={obra.layoutConfig || {
-                filas: 8, columnas: 12, vipFilas: ['A','B'], pasilloCol: 6, inhabilitados: []
-              }}
+  funcionId={funcionId}
+  layoutConfig={obra.layoutConfig || {}}
               precioVip={obra.precioVip || 0}
               precioGeneral={obra.precioGeneral || 0}
               onChange={setSeatsElegidos}
