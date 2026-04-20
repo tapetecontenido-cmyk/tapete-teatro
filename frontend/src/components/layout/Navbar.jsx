@@ -79,22 +79,22 @@ export default function Navbar() {
         : 'bg-white/80 backdrop-blur-sm'
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18">
+        <div className="flex items-center justify-between h-20">
 
           {/* Logo */}
           <Link to="/" className="flex-shrink-0 hover:opacity-90 transition-opacity">
             <LogoTapete />
           </Link>
 
-          {/* Links desktop — pestañas azules */}
-          <div className="hidden lg:flex items-center gap-1.5 bg-gray-100/80 rounded-2xl px-2 py-1.5">
+         {/* Links desktop — pestañas azules */}
+          <div className="hidden lg:flex items-center gap-1.5 bg-gray-100/80 rounded-2xl px-3 py-2">
             {NAV_LINKS.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={to === '/'}
                 className={({ isActive }) => clsx(
-                  'px-4 py-2 rounded-xl text-sm font-heading font-bold transition-all duration-200 whitespace-nowrap',
+                  'px-5 py-2.5 rounded-xl text-base font-heading font-bold transition-all duration-200 whitespace-nowrap',
                   isActive
                     ? 'bg-azul text-white shadow-sm'
                     : 'text-gray-600 hover:bg-white hover:text-azul hover:shadow-sm'
