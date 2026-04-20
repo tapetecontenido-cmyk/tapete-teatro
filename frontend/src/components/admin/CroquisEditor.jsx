@@ -1,38 +1,35 @@
 // src/components/admin/CroquisEditor.jsx
-// Editor de croquis por cuadrícula
 import { useState, useEffect, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { RotateCcw, Plus, Minus } from 'lucide-react';
 
-const CELL = 36; // px por celda
+const CELL = 36;
 
-// Tipos de celda
 const TIPOS = {
-  vacio:       { bg: 'transparent', border: '#e5e7eb',  label: '' },
-  escenario:   { bg: '#3333CC',     border: '#2222AA',  label: 'ESC' },
-  general:     { bg: '#e0f2fe',     border: '#299FE3',  label: '' },
-  vip:         { bg: '#fef9c3',     border: '#ca8a04',  label: '★' },
-  inhabilitado:{ bg: '#f3f4f6',     border: '#d1d5db',  label: '✕' },
+  vacio:        { bg: 'transparent', border: '#e5e7eb' },
+  escenario:    { bg: '#3333CC',     border: '#2222AA' },
+  general:      { bg: '#e0f2fe',     border: '#299FE3' },
+  vip:          { bg: '#fef9c3',     border: '#ca8a04' },
+  inhabilitado: { bg: '#f3f4f6',     border: '#d1d5db' },
 };
 
 const HERRAMIENTAS = [
-  { id: 'escenario',    label: 'Escenario',    color: 'bg-azul text-white' },
+  { id: 'escenario',    label: 'Escenario',     color: 'bg-azul text-white' },
   { id: 'general',      label: 'Silla general', color: 'bg-cyan/20 text-cyan border border-cyan' },
   { id: 'vip',          label: 'Silla VIP',     color: 'bg-yellow-100 text-yellow-700 border border-yellow-400' },
   { id: 'inhabilitado', label: 'Inhabilitado',  color: 'bg-gray-100 text-gray-500 border border-gray-300' },
   { id: 'borrar',       label: 'Borrar',        color: 'bg-red-50 text-red-400 border border-red-200' },
 ];
 
-export default function CroquisEditor({ config, onChange }) {
-  const COLS_DEFAULT = 14;
-  const ROWS_DEFAULT = 10;
+const COLS_DEFAULT = 14;
+const ROWS_DEFAULT = 10;
 
-  // Inicializar grid desde config
-  const initGrid = () => {
+// Reconstruye grid 2D desde cualquier formato
+function reconstruirGrid2D(config) {
   const cols = config?.cols || COLS_DEFAULT;
   const rows = config?.rows || ROWS_DEFAULT;
 
-  if (!config?.grid) {
+  if (!config?.grid || config.grid.length === 0) {
     return Array.from({ length: rows }, () =>
       Array.from({ length: cols }, () => ({ tipo: 'vacio', num: '' }))
     );
@@ -43,64 +40,73 @@ export default function CroquisEditor({ config, onChange }) {
     return config.grid.map(row => row.map(cell => ({ ...cell })));
   }
 
-  // Viene aplanado de Firestore (con _row/_col)
+  // Array plano de Firestore (con _row/_col)
   const grid2d = Array.from({ length: rows }, () =>
     Array.from({ length: cols }, () => ({ tipo: 'vacio', num: '' }))
   );
   config.grid.forEach(cell => {
-    if (cell._row < rows && cell._col < cols) {
-      grid2d[cell._row][cell._col] = { tipo: cell.tipo, num: cell.num };
+    const r = cell._row ?? 0;
+    const c = cell._col ?? 0;
+    if (r < rows && c < cols) {
+      grid2d[r][c] = { tipo: cell.tipo || 'vacio', num: cell.num || '' };
     }
   });
   return grid2d;
-};
+}
 
-  const [cols,      setCols]      = useState(() => config?.cols || COLS_DEFAULT);
-  const [rows,      setRows]      = useState(() => config?.rows || ROWS_DEFAULT);
-  const [grid,      setGrid]      = useState(initGrid);
-  const [tool,      setTool]      = useState('escenario');
-  const [painting, setPainting]  = useState(false);
-  const [nextNum,   setNextNum]   = useState(() => {
-    if (!config?.grid) return 1;
-    let max = 0;
-    config.grid.forEach(row => row.forEach(cell => {
+// Calcula el siguiente número disponible
+function calcNextNum(config) {
+  if (!config?.grid || config.grid.length === 0) return 1;
+  let max = 0;
+
+  // Array plano de Firestore
+  if (!Array.isArray(config.grid[0])) {
+    config.grid.forEach(cell => {
       const n = parseInt(cell.num);
       if (!isNaN(n) && n > max) max = n;
-    }));
+    });
     return max + 1;
+  }
+
+  // Array 2D
+  config.grid.forEach(row => {
+    if (!Array.isArray(row)) return;
+    row.forEach(cell => {
+      const n = parseInt(cell.num);
+      if (!isNaN(n) && n > max) max = n;
+    });
   });
+  return max + 1;
+}
+
+export default function CroquisEditor({ config, onChange }) {
+  const [cols,     setCols]     = useState(() => config?.cols || COLS_DEFAULT);
+  const [rows,     setRows]     = useState(() => config?.rows || ROWS_DEFAULT);
+  const [grid,     setGrid]     = useState(() => reconstruirGrid2D(config));
+  const [tool,     setTool]     = useState('escenario');
+  const [painting, setPainting] = useState(false);
+  const [nextNum,  setNextNum]  = useState(() => calcNextNum(config));
 
   // Sync hacia afuera
   useEffect(() => {
     onChange?.({ ...config, grid, cols, rows });
   }, [grid, cols, rows]);
 
-  // Resize grid cuando cambian cols/rows
   const resizeGrid = useCallback((newCols, newRows) => {
-    setGrid(prev => {
-      return Array.from({ length: newRows }, (_, r) =>
-        Array.from({ length: newCols }, (_, c) =>
-          prev[r]?.[c] ?? { tipo: 'vacio', num: '' }
-        )
-      );
-    });
+    setGrid(prev => Array.from({ length: newRows }, (_, r) =>
+      Array.from({ length: newCols }, (_, c) =>
+        prev[r]?.[c] ?? { tipo: 'vacio', num: '' }
+      )
+    ));
   }, []);
 
-  const setColunas = (n) => {
-    const v = Math.max(5, Math.min(20, n));
-    setCols(v); resizeGrid(v, rows);
-  };
-  const setFilas = (n) => {
-    const v = Math.max(4, Math.min(18, n));
-    setRows(v); resizeGrid(cols, v);
-  };
+  const setColunas = (n) => { const v = Math.max(5, Math.min(20, n)); setCols(v); resizeGrid(v, rows); };
+  const setFilas   = (n) => { const v = Math.max(4, Math.min(18, n)); setRows(v); resizeGrid(cols, v); };
 
-  // Pintar celda
   const pintarCelda = useCallback((r, c) => {
     setGrid(prev => {
       const next = prev.map(row => row.map(cell => ({ ...cell })));
       const cell = next[r][c];
-
       if (tool === 'borrar') {
         next[r][c] = { tipo: 'vacio', num: '' };
       } else if (tool === 'escenario') {
@@ -108,10 +114,8 @@ export default function CroquisEditor({ config, onChange }) {
       } else if (tool === 'inhabilitado') {
         next[r][c] = { tipo: 'inhabilitado', num: '' };
       } else if (tool === 'general' || tool === 'vip') {
-        // Si ya es silla del mismo tipo, no cambiar número
         if (cell.tipo === tool) return prev;
-        // Si era otro tipo, asignar nuevo número
-        const num = cell.tipo === 'general' || cell.tipo === 'vip' ? cell.num : String(nextNum);
+        const num = (cell.tipo === 'general' || cell.tipo === 'vip') ? cell.num : String(nextNum);
         next[r][c] = { tipo: tool, num };
         if (!(cell.tipo === 'general' || cell.tipo === 'vip')) {
           setNextNum(n => n + 1);
@@ -121,9 +125,9 @@ export default function CroquisEditor({ config, onChange }) {
     });
   }, [tool, nextNum]);
 
-  const handleMouseDown = (r, c) => { setPainting(true); pintarCelda(r, c); };
+  const handleMouseDown  = (r, c) => { setPainting(true); pintarCelda(r, c); };
   const handleMouseEnter = (r, c) => { if (painting) pintarCelda(r, c); };
-  const handleMouseUp = () => setPainting(false);
+  const handleMouseUp    = () => setPainting(false);
 
   const limpiar = () => {
     if (!confirm('¿Limpiar todo el croquis?')) return;
@@ -136,19 +140,14 @@ export default function CroquisEditor({ config, onChange }) {
   const renumerar = () => {
     let n = 1;
     setGrid(prev => prev.map(row => row.map(cell => {
-      if (cell.tipo === 'general' || cell.tipo === 'vip') {
-        const updated = { ...cell, num: String(n++) };
-        return updated;
-      }
+      if (cell.tipo === 'general' || cell.tipo === 'vip') return { ...cell, num: String(n++) };
       return cell;
     })));
     setNextNum(n);
   };
 
-  // Stats
-  const sillasTotal    = grid.flat().filter(c => c.tipo === 'general' || c.tipo === 'vip').length;
-  const sillasVip      = grid.flat().filter(c => c.tipo === 'vip').length;
-  const sillasInh      = grid.flat().filter(c => c.tipo === 'inhabilitado').length;
+  const sillasTotal     = grid.flat().filter(c => c.tipo === 'general' || c.tipo === 'vip').length;
+  const sillasVip       = grid.flat().filter(c => c.tipo === 'vip').length;
   const celdasEscenario = grid.flat().filter(c => c.tipo === 'escenario').length;
 
   return (
@@ -183,8 +182,7 @@ export default function CroquisEditor({ config, onChange }) {
         {HERRAMIENTAS.map(h => (
           <button key={h.id} type="button" onClick={() => setTool(h.id)}
             className={clsx('px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all',
-              h.color,
-              tool === h.id ? 'ring-2 ring-offset-1 ring-azul scale-105' : 'opacity-70 hover:opacity-100')}>
+              h.color, tool === h.id ? 'ring-2 ring-offset-1 ring-azul scale-105' : 'opacity-70 hover:opacity-100')}>
             {h.label}
           </button>
         ))}
@@ -192,51 +190,38 @@ export default function CroquisEditor({ config, onChange }) {
 
       {/* Grid */}
       <div className="overflow-auto border border-gray-200 rounded-xl bg-white p-3" style={{ maxHeight: 400 }}>
-        <div
-          style={{ display: 'inline-block', userSelect: 'none' }}
-          onMouseLeave={() => setPainting(false)}
-        >
+        <div style={{ display: 'inline-block', userSelect: 'none' }}
+             onMouseLeave={() => setPainting(false)}>
           {grid.map((row, r) => (
             <div key={r} style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
               {row.map((cell, c) => {
-                const tipo = TIPOS[cell.tipo] || TIPOS.vacio;
+                const tipo    = TIPOS[cell.tipo] || TIPOS.vacio;
                 const esSilla = cell.tipo === 'general' || cell.tipo === 'vip';
                 const esEsc   = cell.tipo === 'escenario';
                 return (
-                  <div
-                    key={c}
+                  <div key={c}
                     onMouseDown={() => handleMouseDown(r, c)}
                     onMouseEnter={() => handleMouseEnter(r, c)}
                     style={{
-                      width:  CELL,
-                      height: CELL,
+                      width: CELL, height: CELL, flexShrink: 0,
                       background: tipo.bg,
                       border: `1.5px solid ${tipo.border}`,
                       borderRadius: esEsc ? 4 : esSilla ? 8 : 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'crosshair',
-                      flexShrink: 0,
                       transition: 'background 0.1s',
                       boxShadow: esEsc ? '0 2px 8px rgba(51,51,204,0.3)' : 'none',
-                    }}
-                  >
+                    }}>
                     {esSilla && (
                       <span style={{
-                        fontSize: cell.num.length > 2 ? 9 : 11,
+                        fontSize: (cell.num?.length || 0) > 2 ? 9 : 11,
                         fontFamily: '"Bebas Neue",sans-serif',
                         color: cell.tipo === 'vip' ? '#92400e' : '#0369a1',
-                        fontWeight: 'bold',
-                        lineHeight: 1,
-                      }}>
-                        {cell.num}
-                      </span>
+                        fontWeight: 'bold', lineHeight: 1,
+                      }}>{cell.num}</span>
                     )}
                     {esEsc && (
-                      <span style={{ fontSize: 8, fontFamily: '"Bebas Neue",sans-serif', color: 'white', letterSpacing: 1 }}>
-                        ESC
-                      </span>
+                      <span style={{ fontSize: 8, fontFamily: '"Bebas Neue",sans-serif', color: 'white', letterSpacing: 1 }}>ESC</span>
                     )}
                     {cell.tipo === 'inhabilitado' && (
                       <span style={{ fontSize: 12, color: '#9ca3af' }}>✕</span>
@@ -252,7 +237,7 @@ export default function CroquisEditor({ config, onChange }) {
         </div>
       </div>
 
-      {/* Stats y leyenda */}
+      {/* Stats */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 font-heading">
         <div className="flex gap-3 flex-wrap">
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-azul inline-block" /> Escenario ({celdasEscenario})</span>
@@ -260,13 +245,11 @@ export default function CroquisEditor({ config, onChange }) {
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-yellow-400 bg-yellow-100 inline-block" /> VIP</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-gray-300 bg-gray-100 inline-block" /> Inh.</span>
         </div>
-        <span className="font-bold text-gray-700">
-          {sillasTotal - sillasInh} activas · {sillasVip} VIP
-        </span>
+        <span className="font-bold text-gray-700">{sillasTotal} activas · {sillasVip} VIP</span>
       </div>
 
       <p className="text-xs text-gray-400 font-heading">
-        💡 Selecciona una herramienta y haz clic (o arrastra) sobre las celdas para diseñar el croquis
+        💡 Selecciona una herramienta y haz clic o arrastra sobre las celdas
       </p>
     </div>
   );

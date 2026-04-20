@@ -92,7 +92,7 @@ export default function Contacto() {
                     <div>
                       <p className="font-heading font-bold text-gray-900">{nombre}</p>
                       <div className="flex gap-3 text-sm text-gray-500">
-                        <button onClick={() => abrirEditar(obra)}
+                        <button onClick={() => { abrirEditar(obra); setTimeout(() => setMostrarAsientos(true), 100); }}
   className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors">
   <Settings size={13} /> Croquis
 </button>
