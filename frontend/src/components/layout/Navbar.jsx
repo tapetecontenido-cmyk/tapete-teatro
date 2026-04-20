@@ -1,5 +1,4 @@
 // src/components/layout/Navbar.jsx
-// Barra de navegación principal — Tapete Teatro
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Bell, Menu, X, ChevronDown, LogOut, User, Settings } from 'lucide-react';
@@ -8,39 +7,36 @@ import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/firebase';
 import { clsx } from 'clsx';
 
-// Logotipo Tapete Teatro
 const LogoTapete = () => (
   <img src="/logo-tapete.png" alt="Tapete Teatro" className="h-10 w-auto" />
 );
 
 const NAV_LINKS = [
-  { to: '/',          label: 'Inicio' },
+  { to: '/',              label: 'Inicio' },
   { to: '/quienes-somos', label: 'Quiénes Somos' },
-  { to: '/cartelera', label: 'Cartelera' },
-  { to: '/talleres',  label: 'Talleres' },
-  { to: '/noticias',  label: 'Noticias' },
-  { to: '/contacto',  label: 'Contacto' },
+  { to: '/cartelera',     label: 'Cartelera' },
+  { to: '/talleres',      label: 'Talleres' },
+  { to: '/noticias',      label: 'Noticias' },
+  { to: '/contacto',      label: 'Contacto' },
 ];
 
 export default function Navbar() {
   const { user, perfil, cerrarSesion, esAdmin, esProfesor } = useAuth();
   const navigate   = useNavigate();
-  const [menuOpen,  setMenuOpen]   = useState(false);
-  const [userMenu,  setUserMenu]   = useState(false);
-  const [notifOpen, setNotifOpen]  = useState(false);
-  const [notifs,    setNotifs]     = useState([]);
-  const [scrolled,  setScrolled]   = useState(false);
+  const [menuOpen,  setMenuOpen]  = useState(false);
+  const [userMenu,  setUserMenu]  = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifs,    setNotifs]    = useState([]);
+  const [scrolled,  setScrolled]  = useState(false);
   const userRef  = useRef(null);
   const notifRef = useRef(null);
 
-  // ── Detectar scroll ────────────────────────────────────────────────────
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // ── Cerrar dropdowns al click fuera ───────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       if (userRef.current  && !userRef.current.contains(e.target))  setUserMenu(false);
@@ -50,7 +46,6 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Suscribirse a notificaciones ───────────────────────────────────────
   useEffect(() => {
     if (!user) { setNotifs([]); return; }
     const q = query(
@@ -88,19 +83,21 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link to="/" className="flex-shrink-0 hover:opacity-90 transition-opacity">
-            <LogoTapete className="h-10 w-auto" />
+            <LogoTapete />
           </Link>
 
-          {/* Links desktop */}
-          <div className="hidden lg:flex items-center gap-1">
+          {/* Links desktop — pestañas azules */}
+          <div className="hidden lg:flex items-center gap-1.5 bg-gray-100/80 rounded-2xl px-2 py-1.5">
             {NAV_LINKS.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={to === '/'}
                 className={({ isActive }) => clsx(
-                  'nav-link px-3 py-2 rounded-lg text-sm',
-                  isActive && 'nav-link-active text-azul'
+                  'px-4 py-2 rounded-xl text-sm font-heading font-bold transition-all duration-200 whitespace-nowrap',
+                  isActive
+                    ? 'bg-azul text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-white hover:text-azul hover:shadow-sm'
                 )}
               >
                 {label}
@@ -110,10 +107,9 @@ export default function Navbar() {
 
           {/* Acciones derecha */}
           <div className="flex items-center gap-2">
-
             {user ? (
               <>
-                {/* Campana de notificaciones */}
+                {/* Campana */}
                 <div className="relative" ref={notifRef}>
                   <button
                     onClick={() => setNotifOpen(!notifOpen)}
@@ -126,32 +122,21 @@ export default function Navbar() {
                     )}
                   </button>
 
-                  {/* Dropdown de notificaciones */}
                   {notifOpen && (
                     <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-card-lg border border-gray-100 z-50 overflow-hidden">
                       <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                         <span className="font-heading font-bold text-gray-900 text-sm">Notificaciones</span>
-                        {notLeidas > 0 && (
-                          <span className="badge badge-pending">{notLeidas} nuevas</span>
-                        )}
+                        {notLeidas > 0 && <span className="badge badge-pending">{notLeidas} nuevas</span>}
                       </div>
                       <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
                         {notifs.length === 0 ? (
                           <p className="p-6 text-center text-gray-400 text-sm">Sin notificaciones</p>
                         ) : (
                           notifs.slice(0, 10).map(n => (
-                            <button
-                              key={n.id}
-                              onClick={() => marcarLeida(n.id)}
-                              className={clsx(
-                                'w-full text-left p-4 hover:bg-gray-50 transition-colors',
-                                !n.leida && 'bg-azul/3'
-                              )}
-                            >
+                            <button key={n.id} onClick={() => marcarLeida(n.id)}
+                              className={clsx('w-full text-left p-4 hover:bg-gray-50 transition-colors', !n.leida && 'bg-azul/3')}>
                               <div className="flex gap-3">
-                                {!n.leida && (
-                                  <span className="w-2 h-2 rounded-full bg-azul mt-1.5 flex-shrink-0" />
-                                )}
+                                {!n.leida && <span className="w-2 h-2 rounded-full bg-azul mt-1.5 flex-shrink-0" />}
                                 <div className={!n.leida ? '' : 'ml-5'}>
                                   <p className="text-sm font-heading font-bold text-gray-800">{n.titulo}</p>
                                   <p className="text-xs text-gray-500 mt-0.5">{n.mensaje}</p>
@@ -165,18 +150,12 @@ export default function Navbar() {
                   )}
                 </div>
 
-                {/* Menú de usuario */}
+                {/* Menú usuario */}
                 <div className="relative" ref={userRef}>
-                  <button
-                    onClick={() => setUserMenu(!userMenu)}
-                    className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 transition-colors"
-                  >
+                  <button onClick={() => setUserMenu(!userMenu)}
+                    className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
                     {perfil?.fotoPerfil ? (
-                      <img
-                        src={perfil.fotoPerfil}
-                        alt={perfil.nombre}
-                        className="w-8 h-8 rounded-full object-cover border-2 border-azul/20"
-                      />
+                      <img src={perfil.fotoPerfil} alt={perfil.nombre} className="w-8 h-8 rounded-full object-cover border-2 border-azul/20" />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center text-white text-xs font-bold">
                         {perfil?.nombre?.[0]?.toUpperCase() || 'U'}
@@ -213,24 +192,17 @@ export default function Navbar() {
                     </div>
                   )}
                 </div>
-
               </>
             ) : (
               <>
-                <Link to="/login" className="btn-ghost text-sm py-2">
-                  Iniciar Sesión
-                </Link>
-                <Link to="/registro" className="btn-primary text-sm py-2.5">
-                  Registrarse
-                </Link>
+                <Link to="/login" className="btn-ghost text-sm py-2">Iniciar Sesión</Link>
+                <Link to="/registro" className="btn-primary text-sm py-2.5">Registrarse</Link>
               </>
             )}
 
             {/* Hamburguesa móvil */}
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 rounded-xl text-gray-600 hover:text-azul hover:bg-azul/10 transition-colors"
-            >
+            <button onClick={() => setMenuOpen(!menuOpen)}
+              className="lg:hidden p-2 rounded-xl text-gray-600 hover:text-azul hover:bg-azul/10 transition-colors">
               {menuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
@@ -240,20 +212,16 @@ export default function Navbar() {
       {/* Menú móvil */}
       {menuOpen && (
         <div className="lg:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md">
-          <div className="px-4 py-4 space-y-1">
+          <div className="px-4 py-4 space-y-1.5">
             {NAV_LINKS.map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
+              <NavLink key={to} to={to} end={to === '/'}
                 onClick={() => setMenuOpen(false)}
                 className={({ isActive }) => clsx(
-                  'block px-4 py-3 rounded-xl font-heading font-bold text-sm transition-colors',
+                  'flex items-center px-4 py-3 rounded-xl font-heading font-bold text-sm transition-all',
                   isActive
-                    ? 'bg-azul text-white'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-azul'
-                )}
-              >
+                    ? 'bg-azul text-white shadow-sm'
+                    : 'text-gray-700 hover:bg-azul/10 hover:text-azul'
+                )}>
                 {label}
               </NavLink>
             ))}
