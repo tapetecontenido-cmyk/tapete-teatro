@@ -92,7 +92,10 @@ export default function Contacto() {
                     <div>
                       <p className="font-heading font-bold text-gray-900">{nombre}</p>
                       <div className="flex gap-3 text-sm text-gray-500">
-                        <a href={`https://instagram.com/${ig.slice(1)}`} target="_blank" rel="noopener noreferrer" className="hover:text-azul">{ig}</a>
+                        <button onClick={() => abrirEditar(obra)}
+  className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors">
+  <Settings size={13} /> Croquis
+</button>
                         <span>·</span>
                         <a href={`tel:${tel.replace(/\s/g, '')}`} className="hover:text-azul">{tel}</a>
                       </div>
