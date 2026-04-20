@@ -230,7 +230,7 @@ export default function AdminCartelera() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {obras.map(obra => (
           <div key={obra.id} className="card overflow-hidden">
-            <div className="relative aspect-[2/3] bg-gray-100">
+            <div className="relative aspect-[4/5] bg-gray-100">
               {obra.posterUrl
                 ? <img src={obra.posterUrl} alt={obra.nombre} className="w-full h-full object-cover" />
                 : <div className="w-full h-full bg-gradient-subtle flex items-center justify-center text-gray-400 text-4xl font-display">{obra.nombre?.[0]}</div>
