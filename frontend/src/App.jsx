@@ -34,6 +34,7 @@ const AdminTalleres     = lazy(() => import('./pages/admin/AdminTalleres'));
 const AdminNoticias     = lazy(() => import('./pages/admin/AdminNoticias'));
 const AdminUsuarios     = lazy(() => import('./pages/admin/AdminUsuarios'));
 const AdminConfiguracion= lazy(() => import('./pages/admin/AdminConfiguracion'));
+const CroquisEditorPage = lazy(() => import('./pages/admin/CroquisEditorPage'));
 
 // ── Spinner de carga ───────────────────────────────────────────────────
 function PageLoader() {
@@ -158,6 +159,11 @@ function AppRoutes() {
           <Route path="configuracion" element={
             <ProtectedRoute requiredRole="admin">
               <AdminConfiguracion />
+            </ProtectedRoute>
+          } />
+          <Route path="croquis/:obraId" element={
+            <ProtectedRoute requiredRole="admin">
+              <CroquisEditorPage />
             </ProtectedRoute>
           } />
         </Route>

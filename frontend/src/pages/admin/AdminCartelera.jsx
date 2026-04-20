@@ -1,5 +1,6 @@
 // src/pages/admin/AdminCartelera.jsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   collection, query, orderBy, onSnapshot, doc,
   updateDoc, serverTimestamp, addDoc, getDocs, deleteDoc
@@ -10,7 +11,6 @@ import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 import DOMPurify from 'dompurify';
 import { subirArchivo } from '../../utils/subirArchivo';
-import CroquisEditor from '../../components/admin/CroquisEditor';
 
 const GENEROS = ['Drama', 'Comedia', 'Musical', 'Infantil', 'Danza', 'Monólogo', 'Experimental'];
 
@@ -93,6 +93,7 @@ function ModalFunciones({ obra, onClose }) {
 }
 
 export default function AdminCartelera() {
+  const navigate = useNavigate();
   const [obras, setObras] = useState([]);
   const [modal, setModal] = useState(false);
   const [modalFunciones, setModalFunciones] = useState(null);
@@ -236,11 +237,12 @@ export default function AdminCartelera() {
               <div className="text-xs text-gray-400 mt-1">
                 {(obra.layoutConfig?.sillas || []).filter(s => s.estado !== 'inhabilitado').length} sillas activas
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-4">
-                <button onClick={() => abrirEditar(obra)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors"><Edit2 size={13} /> Editar</button>
-                <button onClick={() => setModalFunciones(obra)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors"><Calendar size={13} /> Funciones</button>
-                <button onClick={() => handleEliminar(obra.id)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-orange-400 hover:text-orange-500 transition-colors"><Trash2 size={13} /> Desactivar</button>
-                <button onClick={() => moverAPapelera(obra)} className="col-span-3 flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-red-400 hover:text-red-500 transition-colors"><Trash2 size={13} /> Eliminar</button>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+              <button onClick={() => abrirEditar(obra)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors"><Edit2 size={13} /> Datos</button>
+              <button onClick={() => navigate(`/admin/croquis/${obra.id}`)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors"><Settings size={13} /> Croquis</button>
+              <button onClick={() => setModalFunciones(obra)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors"><Calendar size={13} /> Funciones</button>
+              <button onClick={() => handleEliminar(obra.id)} className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-orange-400 hover:text-orange-500 transition-colors"><Trash2 size={13} /> Desactivar</button>
+              <button onClick={() => moverAPapelera(obra)} className="col-span-2 flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-red-400 hover:text-red-500 transition-colors"><Trash2 size={13} /> Eliminar</button>
               </div>
             </div>
           </div>
