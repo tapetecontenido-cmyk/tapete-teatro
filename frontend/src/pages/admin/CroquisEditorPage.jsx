@@ -4,10 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, Plus, Trash2, RotateCcw, Square, Circle, Hexagon, Triangle, Save, ZoomIn, ZoomOut } from 'lucide-react';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
 
 const GRID = 44;
 
@@ -41,7 +41,9 @@ function EscenarioShape({ forma, w, h }) {
 export default function CroquisEditorPage() {
   const { obraId } = useParams();
   const navigate   = useNavigate();
-  const { cargando: authCargando } = useAuth();
+
+  const { user, perfil, cargando: authCargando } = useAuth();
+
   const [obra,       setObra]       = useState(null);
   const [sillas,     setSillas]     = useState([]);
   const [escenario,  setEscenario]  = useState({ x: 180, y: 50, w: 220, h: 90, forma: 'rect' });
@@ -201,11 +203,30 @@ export default function CroquisEditorPage() {
     inhabilitado: { bg: '#f3f4f6', border: '#d1d5db', text: '#9ca3af' },
   }[estado] || { bg: '#e0f2fe', border: '#299FE3', text: '#0369a1' });
 
-  if (authCargando || cargando) return (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="spinner w-10 h-10" />
-  </div>
-);
+  // Esperar a que auth cargue
+  if (authCargando) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="spinner w-10 h-10" />
+    </div>
+  );
+
+  // Redirigir si no está autenticado o no es admin/profesor
+  if (!user || (perfil && perfil.role !== 'admin' && perfil.role !== 'profesor')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="font-heading font-bold text-gray-900 mb-2">Acceso denegado</p>
+          <a href="/login" className="btn-primary text-sm">Iniciar sesión</a>
+        </div>
+      </div>
+    );
+  }
+
+  if (cargando) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="spinner w-10 h-10" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
