@@ -55,10 +55,12 @@ function ProtectedRoute({ children, requiredRole }) {
   if (cargando) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
 
-  if (requiredRole) {
+  if (requiredRole && perfil) {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-    if (!roles.includes(perfil?.role)) return <Navigate to="/" replace />;
+    if (!roles.includes(perfil.role)) return <Navigate to="/" replace />;
   }
+
+  if (requiredRole && !perfil) return <PageLoader />;
 
   return children;
 }

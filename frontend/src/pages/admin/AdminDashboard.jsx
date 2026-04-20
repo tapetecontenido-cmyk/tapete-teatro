@@ -366,10 +366,10 @@ export default function AdminLayout() {
   const location = useLocation();
 
   useEffect(() => {
-    if (!cargando && !esAdmin && !esProfesor) {
-      navigate('/');
-    }
-  }, [cargando, esAdmin, esProfesor]);
+  if (!cargando && !esAdmin && !esProfesor) {
+    navigate('/admin/cartelera');
+  }
+}, [cargando, esAdmin, esProfesor]);
 
   if (cargando) return (
     <div className="min-h-screen flex items-center justify-center">
