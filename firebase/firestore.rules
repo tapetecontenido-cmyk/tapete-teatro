@@ -10,51 +10,66 @@ service cloud.firestore {
     function isAlumno()   { return isAuth() && getRole() == 'alumno'; }
     function isOwner(uid) { return isAuth() && userId() == uid; }
 
+    // ── USUARIOS ──────────────────────────────────────────────
     match /users/{uid} {
-      allow read:  if isOwner(uid) || isAdmin() || isProfesor();
+      allow read:   if isOwner(uid) || isAdmin() || isProfesor();
       allow create: if isAuth() && isOwner(uid);
-      allow update: if isOwner(uid) || isAdmin();
+      // El usuario puede editarse SIN cambiar role ni activo
+      allow update: if (isOwner(uid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'activo']))
+                    || isAdmin();
       allow delete: if isAdmin();
     }
 
+    // ── OBRAS Y FUNCIONES ─────────────────────────────────────
     match /obras/{obraId} {
       allow read: if true;
       allow write: if isAdmin();
-
       match /funciones/{funcionId} {
         allow read: if true;
         allow write: if isAdmin();
       }
     }
 
+    // ── ASIENTOS ──────────────────────────────────────────────
+    // Público para que compradores sin login puedan reservar
     match /asientosOcupados/{funcionId} {
-      allow read: if true;
-      allow write: if isAuth();
+      allow read:  if true;
+      allow write: if true;
     }
 
+    // ── RESERVAS ──────────────────────────────────────────────
+    // Crear sin login (compradores anónimos)
     match /reservas/{reservaId} {
       allow read:   if isAdmin() || (isAuth() && resource.data.userId == userId());
-      allow create: if isAuth();
+      allow create: if true;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
+    // ── PAPELERAS (solo admin) ────────────────────────────────
+    match /papelera/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /papeleraObras/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── TALLERES ──────────────────────────────────────────────
     match /talleres/{tallerId} {
       allow read: if true;
       allow write: if isAdmin() || isProfesor();
-
       match /materiales/{materialId} {
         allow read: if isAdmin() || isProfesor() ||
           (isAuth() && exists(/databases/$(database)/documents/inscripciones/$(userId() + '_' + tallerId)));
         allow write: if isAdmin() || isProfesor();
       }
-
       match /fotos/{fotoId} {
         allow read: if isAuth();
         allow write: if isAdmin() || isProfesor();
       }
     }
 
+    // ── INSCRIPCIONES ─────────────────────────────────────────
     match /inscripciones/{inscripcionId} {
       allow read:   if isAdmin() || isProfesor() || (isAuth() && resource.data.userId == userId());
       allow create: if isAuth();
@@ -62,31 +77,36 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── NOTICIAS ──────────────────────────────────────────────
     match /noticias/{noticiaId} {
-      allow read: if resource.data.publicado == true || isAdmin();
+      allow read:  if resource.data.publicado == true || isAdmin();
       allow write: if isAdmin();
     }
 
+    // ── NOTIFICACIONES ────────────────────────────────────────
     match /notificaciones/{notifId} {
       allow read:   if isAuth() && resource.data.userId == userId();
-      allow create: if isAdmin() || isProfesor();
+      allow create: if true;
       allow update: if isAuth() && resource.data.userId == userId();
       allow delete: if isAdmin();
     }
 
+    // ── CONFIGURACIÓN ─────────────────────────────────────────
     match /configuracion/{docId} {
-      allow read: if isAuth();
+      allow read:  if true;
       allow write: if isAdmin();
     }
 
+    // ── MENSAJES DE CONTACTO ──────────────────────────────────
     match /mensajes_contacto/{msgId} {
       allow read:   if isAdmin();
       allow create: if true;
       allow delete: if isAdmin();
     }
 
+    // ── ANUNCIOS ──────────────────────────────────────────────
     match /anuncios/{anuncioId} {
-      allow read: if isAuth();
+      allow read:  if isAuth();
       allow write: if isAdmin() || isProfesor();
     }
   }
