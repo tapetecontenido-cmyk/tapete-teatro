@@ -240,7 +240,7 @@ h4, h5, h6 {
   /* Admin sidebar */
   .admin-nav-item {
     @apply flex items-center gap-3 px-4 py-3 rounded-xl
-           font-heading font-bold text-sm text-gray-600
+           font-heading font-bold text-sm text-azul
            transition-all duration-200
            hover:bg-azul/10 hover:text-azul cursor-pointer;
   }

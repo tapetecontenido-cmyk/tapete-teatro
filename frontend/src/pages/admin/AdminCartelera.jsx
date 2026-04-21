@@ -15,23 +15,49 @@ import { subirArchivo } from '../../utils/subirArchivo';
 
 const GENEROS = ['Drama', 'Comedia', 'Musical', 'Infantil', 'Danza', 'Monólogo', 'Experimental'];
 
+const HORAS = Array.from({ length: 24 }, (_, h) =>
+  ['00','15','30','45'].map(m => `${String(h).padStart(2,'0')}:${m}`)
+).flat();
+
 function ModalFunciones({ obra, onClose }) {
   const [funciones, setFunciones] = useState([]);
   const [form, setForm] = useState({ fecha: '', hora: '', sala: '' });
   const [guardando, setGuardando] = useState(false);
+  const [mesActual, setMesActual] = useState(() => {
+    const hoy = new Date();
+    return { anio: hoy.getFullYear(), mes: hoy.getMonth() };
+  });
 
   useEffect(() => {
     getDocs(query(collection(db, 'obras', obra.id, 'funciones'), orderBy('fecha')))
       .then(snap => setFunciones(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [obra.id]);
 
+  const diasEnMes = new Date(mesActual.anio, mesActual.mes + 1, 0).getDate();
+  const primerDia = new Date(mesActual.anio, mesActual.mes, 1).getDay();
+  const hoy = new Date();
+
+  const seleccionarDia = (dia) => {
+    const fecha = `${mesActual.anio}-${String(mesActual.mes + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+    setForm(p => ({ ...p, fecha }));
+  };
+
+  const diaSeleccionado = form.fecha ? parseInt(form.fecha.split('-')[2]) : null;
+  const mesSeleccionado = form.fecha ? parseInt(form.fecha.split('-')[1]) - 1 : null;
+  const anioSeleccionado = form.fecha ? parseInt(form.fecha.split('-')[0]) : null;
+
+  const nombresMes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const diasSemana = ['D','L','M','X','J','V','S'];
+
   const agregarFuncion = async () => {
-    if (!form.fecha || !form.hora) { toast.error('Fecha y hora son requeridas'); return; }
+    if (!form.fecha || !form.hora) { toast.error('Selecciona fecha y hora'); return; }
     setGuardando(true);
     try {
       const fechaObj = new Date(form.fecha + 'T' + form.hora);
-      const sillas = obra.layoutConfig?.sillas || [];
-      const activas = sillas.filter(s => s.estado !== 'inhabilitado').length;
+      const grid = obra.layoutConfig?.grid || [];
+      const activas = Array.isArray(grid[0])
+        ? grid.flat().filter(c => c.tipo === 'general' || c.tipo === 'vip').length
+        : grid.filter(c => (c.tipo === 'general' || c.tipo === 'vip')).length;
       const ref = await addDoc(collection(db, 'obras', obra.id, 'funciones'), {
         fecha: fechaObj,
         hora: form.hora,
@@ -54,39 +80,147 @@ function ModalFunciones({ obra, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container max-w-xl p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-5">
+    <div className="modal-overlay">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
           <h2 className="font-heading font-bold text-xl text-gray-900">Funciones — {obra.nombre}</h2>
           <button onClick={onClose}><X size={20} className="text-gray-400" /></button>
         </div>
-        <div className="bg-gray-50 rounded-xl p-4 mb-5">
-          <p className="font-heading font-bold text-sm text-gray-700 mb-3">Nueva función</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="label-field">Fecha</label><input type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))} className="input-field text-sm py-2" /></div>
-            <div><label className="label-field">Hora</label><input type="time" value={form.hora} onChange={e => setForm(p => ({ ...p, hora: e.target.value }))} className="input-field text-sm py-2" /></div>
-            <div className="col-span-2"><label className="label-field">Sala (opcional)</label><input type="text" value={form.sala} onChange={e => setForm(p => ({ ...p, sala: e.target.value }))} className="input-field text-sm py-2" placeholder="Sala principal" /></div>
+
+        <div className="p-6 space-y-6">
+          {/* Calendario */}
+          <div className="bg-gradient-to-br from-azul/5 to-cyan/5 rounded-2xl p-5 border border-azul/10">
+            <div className="flex items-center justify-between mb-4">
+              <button type="button" onClick={() => setMesActual(p => {
+                const d = new Date(p.anio, p.mes - 1);
+                return { anio: d.getFullYear(), mes: d.getMonth() };
+              })} className="p-2 rounded-xl hover:bg-white transition-colors text-azul font-bold">‹</button>
+              <p className="font-heading font-bold text-gray-900 text-base">
+                {nombresMes[mesActual.mes]} {mesActual.anio}
+              </p>
+              <button type="button" onClick={() => setMesActual(p => {
+                const d = new Date(p.anio, p.mes + 1);
+                return { anio: d.getFullYear(), mes: d.getMonth() };
+              })} className="p-2 rounded-xl hover:bg-white transition-colors text-azul font-bold">›</button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {diasSemana.map(d => (
+                <div key={d} className="text-center text-xs font-heading font-bold text-gray-400 py-1">{d}</div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: primerDia }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: diasEnMes }, (_, i) => {
+                const dia = i + 1;
+                const fechaDia = new Date(mesActual.anio, mesActual.mes, dia);
+                const esPasado = fechaDia < new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+                const esHoy = dia === hoy.getDate() && mesActual.mes === hoy.getMonth() && mesActual.anio === hoy.getFullYear();
+                const esSel = dia === diaSeleccionado && mesActual.mes === mesSeleccionado && mesActual.anio === anioSeleccionado;
+                return (
+                  <button key={dia} type="button"
+                    disabled={esPasado}
+                    onClick={() => seleccionarDia(dia)}
+                    className={clsx(
+                      'h-9 w-full rounded-xl text-sm font-heading font-bold transition-all',
+                      esSel     ? 'bg-azul text-white shadow-brand' :
+                      esHoy     ? 'bg-cyan/20 text-azul border-2 border-cyan' :
+                      esPasado  ? 'text-gray-300 cursor-not-allowed' :
+                                  'hover:bg-white hover:shadow-sm text-gray-700'
+                    )}>
+                    {dia}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <button onClick={agregarFuncion} disabled={guardando} className="btn-primary w-full mt-3 py-2.5 text-sm gap-2">
-            {guardando ? <span className="spinner w-4 h-4" /> : <><Plus size={16} /> Agregar función</>}
-          </button>
-        </div>
-        <div className="space-y-2">
-          {funciones.length === 0
-            ? <p className="text-center text-gray-400 text-sm py-4 font-heading">No hay funciones aún</p>
-            : funciones.map(f => (
-              <div key={f.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <Calendar size={16} className="text-azul flex-shrink-0" />
-                  <div>
-                    <p className="font-heading font-bold text-sm text-gray-900">{f.fechaTexto || (f.fecha instanceof Date ? f.fecha.toLocaleDateString('es-VE') : 'Fecha')}</p>
-                    <p className="text-xs text-gray-400">{f.hora} {f.sala && `· ${f.sala}`}</p>
-                  </div>
-                </div>
-                <button onClick={() => eliminarFuncion(f.id)} className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors text-gray-400"><Trash2 size={14} /></button>
+
+          {/* Hora */}
+          <div>
+            <label className="label-field mb-3">Hora de la función</label>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              {['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','15:00','15:30','16:00','17:00'].map(h => (
+                <button key={h} type="button" onClick={() => setForm(p => ({ ...p, hora: h }))}
+                  className={clsx(
+                    'py-2 rounded-xl text-xs font-heading font-bold border-2 transition-all',
+                    form.hora === h
+                      ? 'bg-azul text-white border-azul shadow-brand'
+                      : 'border-gray-200 text-gray-600 hover:border-azul hover:text-azul'
+                  )}>
+                  {h}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-xs text-gray-400 font-heading">Otra hora:</span>
+              <input type="time" value={form.hora} onChange={e => setForm(p => ({ ...p, hora: e.target.value }))}
+                className="input-field text-sm py-1.5 w-36" />
+            </div>
+          </div>
+
+          {/* Sala */}
+          <div>
+            <label className="label-field">Sala (opcional)</label>
+            <input type="text" value={form.sala} onChange={e => setForm(p => ({ ...p, sala: e.target.value }))}
+              className="input-field" placeholder="Ej: Sala principal, Sala B..." />
+          </div>
+
+          {/* Preview y botón */}
+          {form.fecha && form.hora && (
+            <div className="bg-azul/5 border border-azul/20 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-400 font-heading uppercase tracking-wide">Función a agregar</p>
+                <p className="font-heading font-bold text-gray-900 mt-0.5">
+                  {new Date(form.fecha + 'T' + form.hora).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })} · {form.hora}
+                </p>
+                {form.sala && <p className="text-xs text-gray-400 mt-0.5">{form.sala}</p>}
               </div>
-            ))
-          }
+              <button onClick={agregarFuncion} disabled={guardando}
+                className="btn-primary text-sm py-2.5 px-5 gap-2 flex-shrink-0">
+                {guardando ? <span className="spinner w-4 h-4" /> : <><Plus size={15} /> Agregar</>}
+              </button>
+            </div>
+          )}
+
+          {!form.fecha || !form.hora ? (
+            <button onClick={agregarFuncion} disabled={guardando}
+              className="btn-primary w-full py-3 gap-2">
+              {guardando ? <span className="spinner w-4 h-4" /> : <><Plus size={16} /> Agregar función</>}
+            </button>
+          ) : null}
+
+          {/* Lista de funciones */}
+          <div>
+            <p className="font-heading font-bold text-sm text-gray-700 mb-3">
+              Funciones programadas {funciones.length > 0 && `(${funciones.length})`}
+            </p>
+            <div className="space-y-2">
+              {funciones.length === 0 ? (
+                <div className="text-center py-6 text-gray-400 font-heading text-sm bg-gray-50 rounded-xl">
+                  No hay funciones programadas aún
+                </div>
+              ) : funciones.map(f => (
+                <div key={f.id} className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 border border-gray-100 hover:border-azul/20 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-azul/10 flex items-center justify-center flex-shrink-0">
+                      <Calendar size={18} className="text-azul" />
+                    </div>
+                    <div>
+                      <p className="font-heading font-bold text-sm text-gray-900">
+                        {f.fechaTexto || (f.fecha?.toDate?.() || new Date(f.fecha)).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{f.hora}{f.sala && ` · ${f.sala}`}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => eliminarFuncion(f.id)}
+                    className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors text-gray-300">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
