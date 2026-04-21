@@ -178,6 +178,17 @@ app.post('/api/upload', limiterUpload, upload.single('archivo'), async (req, res
     res.status(500).json({ error: 'Error al subir archivo' });
   }
 });
+// ── Eliminar archivo de Cloudinary ─────────────────────────────────────
+app.post('/api/cloudinary/eliminar', limiterUpload, async (req, res) => {
+  const { publicId } = req.body;
+  if (!publicId) return res.status(400).json({ error: 'publicId requerido' });
+  try {
+    await cloudinary.uploader.destroy(publicId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // ── Rutas de reservas ──────────────────────────────────────────────────
 app.post('/api/reservas/verificar',
   [
