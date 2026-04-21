@@ -29,7 +29,7 @@ function ReservaModal({ reserva, onClose, onConfirmar, onRechazar }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div className="modal-container max-w-2xl" onClick={e => e.stopPropagation()}>
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-heading font-bold text-xl text-gray-900">
