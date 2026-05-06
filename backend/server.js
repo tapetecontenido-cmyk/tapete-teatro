@@ -52,7 +52,19 @@ app.set('trust proxy', 1);
 // Helmet: headers de seguridad HTTP
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: false, // Configurar según necesidad
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:     ["'self'"],
+      scriptSrc:      ["'self'", "'unsafe-inline'", "https://challenges.cloudflare.com"],
+      styleSrc:       ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc:        ["'self'", "https://fonts.gstatic.com"],
+      imgSrc:         ["'self'", "data:", "https://res.cloudinary.com"],
+      connectSrc:     ["'self'", "https://api.resend.com", "https://pydolarve.org", "https://ve.dolarapi.com"],
+      frameSrc:       ["https://challenges.cloudflare.com"],
+      objectSrc:      ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
 }));
 
 // CORS: solo permitir el frontend
