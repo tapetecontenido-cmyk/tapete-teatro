@@ -157,7 +157,20 @@ app.get('/api/tasa-bcv', async (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
+// ── Verificar Turnstile CAPTCHA ────────────────────────────────────────
+async function verificarTurnstile(token) {
+  if (!token) return false;
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      secret: process.env.TURNSTILE_SECRET_KEY,
+      response: token,
+    }),
+  });
+  const data = await res.json();
+  return data.success === true;
+}
 app.post('/api/upload', limiterUpload, upload.single('archivo'), async (req, res) => {
   // Validar tipo MIME
   const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
@@ -373,7 +386,9 @@ app.post('/api/contacto',
     const errores = validationResult(req);
     if (!errores.isEmpty()) return res.status(400).json({ errores: errores.array() });
 
-    const { nombre, email, asunto, mensaje } = req.body;
+    const { nombre, email, asunto, mensaje, captchaToken } = req.body;
+const captchaValido = await verificarTurnstile(captchaToken);
+if (!captchaValido) return res.status(400).json({ error: 'Verificación de seguridad fallida' });
 
     try {
       // Guardar en Firestore
