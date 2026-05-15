@@ -143,7 +143,16 @@ const soloAdmin = (req, res, next) => {
 
 // ── RUTAS ──────────────────────────────────────────────────────────────
 // ── Tasa BCV ───────────────────────────────────────────────────────────
+// Caché de tasa BCV
+let cacheBCV = { tasa: null, timestamp: 0 };
+const CACHE_DURACION = 30 * 60 * 1000; // 30 minutos
+
 app.get('/api/tasa-bcv', async (req, res) => {
+  // Devolver caché si está vigente
+  if (cacheBCV.tasa && Date.now() - cacheBCV.timestamp < CACHE_DURACION) {
+    return res.json({ tasa: cacheBCV.tasa, cache: true });
+  }
+
   const fuentes = [
     'https://pydolarve.org/api/v1/euro?monitor=bcv',
     'https://ve.dolarapi.com/v1/euros/oficial',
@@ -155,13 +164,18 @@ app.get('/api/tasa-bcv', async (req, res) => {
       if (!response.ok) continue;
       const data = await response.json();
 
-      if (data.price)   return res.json({ tasa: parseFloat(data.price) });
-      if (data.promedio) return res.json({ tasa: parseFloat(data.promedio) });
-      if (data.tasa)    return res.json({ tasa: parseFloat(data.tasa) });
+      const tasa = data.price || data.promedio || data.tasa;
+      if (tasa) {
+        cacheBCV = { tasa: parseFloat(tasa), timestamp: Date.now() };
+        return res.json({ tasa: cacheBCV.tasa });
+      }
     } catch {
       continue;
     }
   }
+
+  // Si falla todo pero tenemos caché viejo, usarlo igual
+  if (cacheBCV.tasa) return res.json({ tasa: cacheBCV.tasa, cache: true });
 
   res.status(503).json({ error: 'No se pudo obtener la tasa' });
 });
