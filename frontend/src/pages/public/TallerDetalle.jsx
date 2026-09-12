@@ -1,41 +1,49 @@
 // src/pages/public/TallerDetalle.jsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { subirArchivo } from '../../utils/subirArchivo';
-import { db, storage } from '../../services/firebase';
+import { doc, getDoc, addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft, BookOpen, CheckCircle, Upload, Smartphone, Building2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DOMPurify from 'dompurify';
-import { useTasaBCV } from '../../hooks/useTasaBCV';
 
 export default function TallerDetalle() {
   const { tallerId } = useParams();
   const navigate     = useNavigate();
   const { user, perfil } = useAuth();
-  const { convertir } = useTasaBCV();
-  const [taller,    setTaller]    = useState(null);
-  const [cargando,  setCargando]  = useState(true);
-  const [modal,     setModal]     = useState(false);
-  const [enviando,  setEnviando]  = useState(false);
-  const [exito,     setExito]     = useState(false);
-  const [configBanco, setConfigBanco] = useState(null);
-  const [metodoPago,  setMetodoPago]  = useState('pago_movil');
-  const [referencia,  setReferencia]  = useState('');
-  const [comprobante, setComprobante] = useState(null);
+
+  const [taller,       setTaller]       = useState(null);
+  const [cargando,     setCargando]     = useState(true);
+  const [modal,        setModal]        = useState(false);
+  const [enviando,     setEnviando]     = useState(false);
+  const [exito,        setExito]        = useState(false);
+  const [yaInscrito,   setYaInscrito]   = useState(false);
+  const [estadoActual, setEstadoActual] = useState(null);
 
   useEffect(() => {
     const fetch = async () => {
       const snap = await getDoc(doc(db, 'talleres', tallerId));
       if (!snap.exists()) { navigate('/talleres'); return; }
       setTaller({ id: tallerId, ...snap.data() });
-      const cfgSnap = await getDoc(doc(db, 'configuracion', 'bancario'));
-      if (cfgSnap.exists()) setConfigBanco(cfgSnap.data());
+
+      // Verificar si ya tiene una inscripción a este taller
+      if (user) {
+        const q = query(
+          collection(db, 'inscripciones'),
+          where('userId', '==', user.uid),
+          where('tallerId', '==', tallerId)
+        );
+        const insSnap = await getDocs(q);
+        if (!insSnap.empty) {
+          setYaInscrito(true);
+          setEstadoActual(insSnap.docs[0].data().estado);
+        }
+      }
       setCargando(false);
     };
     fetch();
-  }, [tallerId]);
+  }, [tallerId, user]);
 
   const handleInscribirse = () => {
     if (!user) { navigate('/login'); return; }
@@ -43,30 +51,60 @@ export default function TallerDetalle() {
   };
 
   const handleEnviar = async () => {
-    if (!referencia.trim() || !comprobante) { toast.error('Completa todos los campos'); return; }
     setEnviando(true);
     try {
-      const url = await subirArchivo(comprobante, 'comprobantes');
-
       await addDoc(collection(db, 'inscripciones'), {
-        userId:     user.uid,
+        userId:       user.uid,
         tallerId,
         tallerNombre: taller.nombre,
-        comprador:  { nombre: DOMPurify.sanitize(perfil?.nombre || ''), email: perfil?.email || user.email, cedula: perfil?.cedula || '', telefono: perfil?.telefono || '' },
-        metodoPago, referencia: DOMPurify.sanitize(referencia.trim()),
-        comprobanteUrl: url,
-        estado:     'pendiente',
-        creadoEn:   serverTimestamp(),
+        alumno: {
+          nombre:   DOMPurify.sanitize(perfil?.nombre || ''),
+          email:    perfil?.email || user.email,
+          cedula:   perfil?.cedula || '',
+          telefono: perfil?.telefono || '',
+        },
+        estado:   'pendiente',
+        creadoEn: serverTimestamp(),
       });
 
       setExito(true);
-      toast.success('¡Inscripción enviada!');
-    } catch { toast.error('Error al enviar'); }
+      setYaInscrito(true);
+      setEstadoActual('pendiente');
+      toast.success('¡Solicitud de inscripción enviada!');
+    } catch { toast.error('Error al enviar la solicitud'); }
     finally { setEnviando(false); }
   };
 
   if (cargando) return <div className="min-h-screen flex items-center justify-center pt-20"><div className="spinner w-10 h-10" /></div>;
   if (!taller) return null;
+
+  const BadgeEstado = () => {
+    if (estadoActual === 'pendiente') return (
+      <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl p-4 text-orange-700">
+        <Clock size={20} className="flex-shrink-0" />
+        <div>
+          <p className="font-heading font-bold text-sm">Solicitud pendiente</p>
+          <p className="text-xs text-orange-600 mt-0.5">Tu inscripción está siendo revisada por el equipo.</p>
+        </div>
+      </div>
+    );
+    if (estadoActual === 'aprobada') return (
+      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-4 text-green-700">
+        <CheckCircle size={20} className="flex-shrink-0" />
+        <div>
+          <p className="font-heading font-bold text-sm">¡Ya estás inscrito!</p>
+          <p className="text-xs text-green-600 mt-0.5">Puedes ver el contenido del taller en tu Camerino.</p>
+        </div>
+      </div>
+    );
+    if (estadoActual === 'rechazada') return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+        <p className="font-heading font-bold text-sm">Solicitud no aprobada</p>
+        <p className="text-xs text-red-600 mt-0.5">Contáctanos por WhatsApp para más información.</p>
+      </div>
+    );
+    return null;
+  };
 
   return (
     <div className="min-h-screen pt-20 pb-16">
@@ -106,19 +144,25 @@ export default function TallerDetalle() {
           </div>
           <div>
             <div className="card p-6 sticky top-24">
-              <p className="text-3xl text-azul mb-1" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>
-  ${taller.precio} <span className="text-sm font-body font-normal text-gray-400">USD/mes</span>
-</p>
-{convertir(taller.precio) && (
-  <p className="text-sm text-gray-400 mt-0.5">
-    = {convertir(taller.precio)} Bs
-  </p>
-)}
-              <p className="text-gray-500 text-sm mb-5">Pago mensual · Incluye materiales</p>
-              <button onClick={handleInscribirse} className="btn-primary w-full py-3.5 text-base">
-                Inscribirse ahora
-              </button>
-              <p className="text-center text-xs text-gray-400 mt-3">Cupos limitados disponibles</p>
+              {taller.precio > 0 && (
+                <>
+                  <p className="text-3xl text-azul mb-1" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>
+                    ${taller.precio} <span className="text-sm font-body font-normal text-gray-400">USD/mes</span>
+                  </p>
+                  <p className="text-gray-500 text-sm mb-5">Pago mensual · Incluye materiales</p>
+                </>
+              )}
+
+              {yaInscrito ? (
+                <BadgeEstado />
+              ) : (
+                <>
+                  <button onClick={handleInscribirse} className="btn-primary w-full py-3.5 text-base">
+                    Solicitar inscripción
+                  </button>
+                  <p className="text-center text-xs text-gray-400 mt-3">Tu solicitud será revisada por el equipo de Tapete Teatro</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -126,59 +170,34 @@ export default function TallerDetalle() {
 
       {/* Modal de inscripción */}
       {modal && (
-        <div className="modal-overlay" onClick={() => !exito && setModal(false)}>
+        <div className="modal-overlay">
           <div className="modal-container p-6" onClick={e => e.stopPropagation()}>
             {exito ? (
               <div className="text-center py-8">
                 <CheckCircle size={56} className="text-green-500 mx-auto mb-4" />
-                <h2 className="font-display text-2xl text-gray-900 mb-2">¡Inscripción enviada!</h2>
-                <p className="text-gray-500 mb-6">Tu solicitud está pendiente de verificación.</p>
+                <h2 className="font-display text-2xl text-gray-900 mb-2">¡Solicitud enviada!</h2>
+                <p className="text-gray-500 mb-6">Te notificaremos cuando tu inscripción sea aprobada.</p>
                 <button onClick={() => { setModal(false); setExito(false); }} className="btn-primary">Cerrar</button>
               </div>
             ) : (
               <>
-                <h2 className="font-heading font-bold text-xl text-gray-900 mb-4">Inscribirse — {taller.nombre}</h2>
-                <div className="bg-gradient-brand text-white rounded-xl p-4 text-center mb-5">
-                  <p className="text-white/70 text-sm">Total a pagar</p>
-                  <p className="text-3xl" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${taller.precio} USD</p>
-{convertir(taller.precio) && (
-  <p className="text-sm text-white/70 mt-0.5">= {convertir(taller.precio)} Bs</p>
-)}
+                <h2 className="font-heading font-bold text-xl text-gray-900 mb-2">Solicitar inscripción</h2>
+                <p className="text-gray-500 text-sm mb-5">{taller.nombre}</p>
+
+                <div className="bg-gray-50 rounded-xl p-4 mb-5 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-400">Nombre:</span><strong className="text-gray-900">{perfil?.nombre}</strong></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Email:</span><strong className="text-gray-900">{perfil?.email || user?.email}</strong></div>
+                  {perfil?.telefono && <div className="flex justify-between"><span className="text-gray-400">Teléfono:</span><strong className="text-gray-900">{perfil.telefono}</strong></div>}
                 </div>
-                <div className="mb-4">
-                  <label className="label-field">Método de pago</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[['pago_movil', 'Pago Móvil', Smartphone], ['transferencia', 'Transferencia', Building2]].map(([val, label, Icon]) => (
-                      <button key={val} onClick={() => setMetodoPago(val)}
-                        className={`flex items-center gap-2 p-3 rounded-xl border-2 font-heading font-bold text-sm transition-all ${metodoPago === val ? 'border-azul bg-azul/5 text-azul' : 'border-gray-200 text-gray-600'}`}>
-                        <Icon size={16} />{label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {configBanco && (
-                  <div className="bg-cyan/5 border border-cyan/20 rounded-xl p-4 mb-4 text-sm space-y-1">
-                    {metodoPago === 'pago_movil'
-                      ? Object.entries(configBanco.pagoMovil || {}).map(([k, v]) => <div key={k} className="flex justify-between"><span className="text-gray-400 capitalize">{k}:</span> <strong>{v}</strong></div>)
-                      : Object.entries(configBanco.transferencia || {}).map(([k, v]) => <div key={k} className="flex justify-between"><span className="text-gray-400 capitalize">{k}:</span> <strong>{v}</strong></div>)
-                    }
-                  </div>
-                )}
-                <div className="mb-4">
-                  <label className="label-field">Número de referencia</label>
-                  <input type="text" value={referencia} onChange={e => setReferencia(e.target.value)} className="input-field" placeholder="Ej: 000123456" maxLength={30} />
-                </div>
-                <div className="mb-5">
-                  <label className="label-field">Comprobante de pago</label>
-                  <label className="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-xl cursor-pointer hover:border-azul transition-colors">
-                    <input type="file" accept="image/*,.pdf" className="hidden" onChange={e => setComprobante(e.target.files?.[0] || null)} />
-                    {comprobante ? <><CheckCircle size={24} className="text-green-500" /><span className="text-sm text-green-600 font-heading">{comprobante.name}</span></> : <><Upload size={24} className="text-gray-400" /><span className="text-sm text-gray-400">Subir comprobante</span></>}
-                  </label>
-                </div>
+
+                <p className="text-xs text-gray-400 mb-5">
+                  Al enviar tu solicitud, el equipo de Tapete Teatro la revisará y te contactará para coordinar los detalles de pago e inicio.
+                </p>
+
                 <div className="flex gap-3">
                   <button onClick={() => setModal(false)} className="btn-outline flex-1 py-3">Cancelar</button>
                   <button onClick={handleEnviar} disabled={enviando} className="btn-primary flex-1 py-3">
-                    {enviando ? <span className="spinner w-5 h-5" /> : 'Enviar inscripción'}
+                    {enviando ? <span className="spinner w-5 h-5" /> : 'Enviar solicitud'}
                   </button>
                 </div>
               </>
