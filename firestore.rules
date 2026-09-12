@@ -1,9 +1,98 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    function isAuth()     { return request.auth != null; }
+    function userId()     { return request.auth.uid; }
+    function getRole()    { return get(/databases/$(database)/documents/users/$(userId())).data.role; }
+    function isAdmin()    { return isAuth() && getRole() == 'admin'; }
+    function isProfesor() { return isAuth() && (getRole() == 'profesor' || getRole() == 'admin'); }
+    function isAlumno()   { return isAuth() && getRole() == 'alumno'; }
+    function isOwner(uid) { return isAuth() && userId() == uid; }
+
+    // ── USUARIOS ──────────────────────────────────────────────
+    match /users/{uid} {
+      allow read:   if isOwner(uid) || isAdmin() || isProfesor();
+      allow create: if isAuth() && isOwner(uid);
+      allow update: if (isOwner(uid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'activo']))
+                    || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── OBRAS Y FUNCIONES (solo información, sin compra) ───────
+    match /obras/{obraId} {
+      allow read: if true;
+      allow write: if isAdmin();
+      match /funciones/{funcionId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    // ── PAPELERAS (solo admin) ────────────────────────────────
+    match /papelera/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /papeleraObras/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── TALLERES ──────────────────────────────────────────────
+    match /talleres/{tallerId} {
+      allow read: if true;
+      allow write: if isAdmin() || isProfesor();
+
+      // Camerino — cualquier usuario autenticado puede leer,
+      // el frontend filtra por desbloqueado + inscripción aprobada
+      match /materiales/{materialId} {
+        allow read:  if isAdmin() || isProfesor() || isAuth();
+        allow write: if isAdmin() || isProfesor();
+      }
+      match /fotos/{fotoId} {
+        allow read: if isAuth();
+        allow write: if isAdmin() || isProfesor();
+      }
+    }
+
+    // ── INSCRIPCIONES ─────────────────────────────────────────
+    match /inscripciones/{inscripcionId} {
+      allow read:   if isAdmin() || isProfesor() || (isAuth() && resource.data.userId == userId());
+      allow create: if isAuth();
+      allow update: if isAdmin() || isProfesor();
+      allow delete: if isAdmin();
+    }
+
+    // ── NOTICIAS ──────────────────────────────────────────────
+    match /noticias/{noticiaId} {
+      allow read:  if resource.data.publicado == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── NOTIFICACIONES ────────────────────────────────────────
+    match /notificaciones/{notifId} {
+      allow read:   if isAuth() && resource.data.userId == userId();
+      allow create: if true;
+      allow update: if isAuth() && resource.data.userId == userId();
+      allow delete: if isAdmin();
+    }
+
+    // ── CONFIGURACIÓN ─────────────────────────────────────────
+    match /configuracion/{docId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── MENSAJES DE CONTACTO ──────────────────────────────────
+    match /mensajes_contacto/{msgId} {
+      allow read:   if isAdmin();
+      allow create: if true;
+      allow delete: if isAdmin();
+    }
+
+    // ── ANUNCIOS ──────────────────────────────────────────────
+    match /anuncios/{anuncioId} {
+      allow read:  if isAuth();
+      allow write: if isAdmin() || isProfesor();
     }
   }
 }
