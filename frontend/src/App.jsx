@@ -13,7 +13,6 @@ const HomePage      = lazy(() => import('./pages/public/HomePage'));
 const QuienesSomos  = lazy(() => import('./pages/public/QuienesSomos'));
 const Cartelera     = lazy(() => import('./pages/public/Cartelera'));
 const ObraDetalle   = lazy(() => import('./pages/public/ObraDetalle'));
-const BookingFlow   = lazy(() => import('./pages/public/BookingFlow'));
 const Talleres      = lazy(() => import('./pages/public/Talleres'));
 const TallerDetalle = lazy(() => import('./pages/public/TallerDetalle'));
 const Noticias      = lazy(() => import('./pages/public/Noticias'));
@@ -96,10 +95,6 @@ function AppRoutes() {
 
         <Route path="/cartelera/:obraId" element={
           <PublicLayout><ObraDetalle /></PublicLayout>
-        } />
-
-        <Route path="/cartelera/:obraId/reservar/:funcionId" element={
-          <PublicLayout><BookingFlow /></PublicLayout>
         } />
 
         <Route path="/talleres" element={

@@ -3,15 +3,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { useAuth } from '../../context/AuthContext';
-import { Calendar, Ticket, ArrowLeft, Star } from 'lucide-react';
+import { Calendar, Ticket, ArrowLeft, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function ObraDetalle() {
   const { obraId } = useParams();
   const navigate    = useNavigate();
-  const { user }    = useAuth();
   const [obra,      setObra]      = useState(null);
   const [funciones, setFunciones] = useState([]);
   const [cargando,  setCargando]  = useState(true);
@@ -55,46 +53,21 @@ export default function ObraDetalle() {
                 {obra.duracion && <div><span className="text-white/60">Duración:</span><p className="font-heading font-bold">{obra.duracion} min</p></div>}
                 {obra.reparto && <div className="col-span-2"><span className="text-white/60">Reparto:</span><p className="font-heading font-bold">{obra.reparto}</p></div>}
               </div>
-
-              {/* Precios */}
-              <div className="mt-6 flex gap-4 flex-wrap">
-                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 border border-white/20">
-                  <p className="text-white/60 text-xs font-heading uppercase tracking-wide mb-1">Precio General</p>
-                  <p className="text-3xl text-white" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${obra.precioGeneral} USD</p>
-                </div>
-                {obra.precioVip > 0 && (
-                  <div className="relative rounded-2xl p-5 border-2 border-yellow-400 overflow-hidden"
-                       style={{ background: 'linear-gradient(135deg, #854d0e, #a16207, #ca8a04)' }}>
-                    {/* Brillo dorado */}
-                    <div className="absolute inset-0 opacity-30"
-                         style={{ background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)' }} />
-                    <div className="relative">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Star size={12} className="text-yellow-300 fill-yellow-300" />
-                        <p className="text-yellow-200 text-xs font-heading uppercase tracking-widest font-bold">VIP Premium</p>
-                        <Star size={12} className="text-yellow-300 fill-yellow-300" />
-                      </div>
-                      <p className="text-3xl text-yellow-100" style={{ fontFamily: '"Bebas Neue", sans-serif' }}>${obra.precioVip} USD</p>
-                      <p className="text-yellow-300/70 text-xs mt-0.5">Experiencia exclusiva</p>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Funciones */}
+      {/* Funciones — solo información */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h2 className="font-display text-display-sm text-gray-900 mb-6">Funciones disponibles</h2>
+        <h2 className="font-display text-display-sm text-gray-900 mb-6">Funciones</h2>
         {funciones.length === 0
           ? <p className="text-gray-400 font-heading">No hay funciones programadas actualmente.</p>
           : <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {funciones.map(f => (
                 <div key={f.id} className="card p-5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Calendar size={20} className="text-azul" />
+                  <div className="flex items-center gap-3 mb-2">
+                    <Calendar size={20} className="text-azul flex-shrink-0" />
                     <div>
                       <p className="font-heading font-bold text-gray-900">
                         {f.fecha && format(f.fecha.toDate?.() || new Date(f.fecha), "EEEE d 'de' MMMM", { locale: es })}
@@ -102,20 +75,21 @@ export default function ObraDetalle() {
                       <p className="text-sm text-gray-500">{f.hora}</p>
                     </div>
                   </div>
-                  {f.asientosDisponibles !== undefined && (
-                    <p className="text-xs text-gray-400 mb-4">{f.asientosDisponibles} asientos disponibles</p>
+                  {f.sala && (
+                    <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
+                      <MapPin size={13} /> {f.sala}
+                    </div>
                   )}
-                  <button
-                    onClick={() => navigate(`/cartelera/${obraId}/reservar/${f.id}`)}
-                    disabled={f.asientosDisponibles === 0}
-                    className="btn-primary w-full text-sm py-2.5"
-                  >
-                    {f.asientosDisponibles === 0 ? 'Agotado' : 'Comprar entradas'}
-                  </button>
                 </div>
               ))}
             </div>
         }
+        <div className="mt-8 bg-azul/5 border border-azul/15 rounded-2xl p-5 text-center">
+          <p className="text-gray-600 text-sm">
+            Para más información sobre entradas, contáctanos por WhatsApp o visita nuestra página de{' '}
+            <a href="/contacto" className="text-azul font-heading font-bold hover:underline">Contacto</a>.
+          </p>
+        </div>
       </div>
     </div>
   );
