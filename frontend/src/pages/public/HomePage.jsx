@@ -301,8 +301,8 @@ export default function HomePage() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce cursor-pointer"
-             onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}>
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce cursor-pointer z-10"
+     onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}>
           <MascaraTeatro />
           <span className="text-xs font-heading font-bold tracking-widest uppercase bg-azul text-white px-3 py-1 rounded-lg">Descubre más</span>
           <div className="w-px h-8 bg-gradient-brand-v" />
