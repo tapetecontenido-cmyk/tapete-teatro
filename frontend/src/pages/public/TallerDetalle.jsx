@@ -89,14 +89,15 @@ export default function TallerDetalle() {
       </div>
     );
     if (estadoActual === 'aprobada') return (
-      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-4 text-green-700">
-        <CheckCircle size={20} className="flex-shrink-0" />
-        <div>
-          <p className="font-heading font-bold text-sm">¡Ya estás inscrito!</p>
-          <p className="text-xs text-green-600 mt-0.5">Puedes ver el contenido del taller en tu Camerino.</p>
-        </div>
-      </div>
-    );
+  <button onClick={() => navigate('/camerino')}
+    className="w-full flex items-center gap-3 bg-green-50 border-2 border-green-200 rounded-xl p-4 text-green-700 hover:bg-green-100 transition-colors text-left">
+    <CheckCircle size={22} className="flex-shrink-0" />
+    <div className="flex-1">
+      <p className="font-heading font-bold text-sm">¡Ya estás inscrito!</p>
+      <p className="text-xs text-green-600 mt-0.5">Clic para ir a tu Camerino →</p>
+    </div>
+  </button>
+);
     if (estadoActual === 'rechazada') return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
         <p className="font-heading font-bold text-sm">Solicitud no aprobada</p>
