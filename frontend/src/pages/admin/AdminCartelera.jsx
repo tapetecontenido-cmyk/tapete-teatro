@@ -389,7 +389,7 @@ export default function AdminCartelera() {
       )}
 
       {modal && (
-          <div className="modal-overlay" onClick={() => setModal(false)}>
+          <div className="modal-overlay">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
               <h2 className="font-heading font-bold text-xl text-gray-900">{editando ? 'Editar obra' : 'Nueva obra'}</h2>
