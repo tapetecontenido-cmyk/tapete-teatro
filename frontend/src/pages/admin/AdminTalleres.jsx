@@ -1,25 +1,37 @@
 // src/pages/admin/AdminTalleres.jsx
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, serverTimestamp, getDocs, where } from 'firebase/firestore';
-import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../services/firebase';
-import { Plus, Edit2, X, Upload, CheckCircle, BookOpen, Users } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, where } from 'firebase/firestore';
+import { db } from '../../services/firebase';
+import { subirArchivo } from '../../utils/subirArchivo';
+import { Plus, Edit2, X, Upload, CheckCircle, BookOpen, Users, FileText, Link2, MessageSquare, Lock, Unlock, Trash2, GripVertical } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DOMPurify from 'dompurify';
+import { clsx } from 'clsx';
 
 const NIVELES = ['Básico', 'Intermedio', 'Avanzado', 'Niños', 'Especial', 'Profesional'];
-const DIAS    = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+const TIPOS_MATERIAL = [
+  { id: 'mensaje', label: 'Mensaje', icon: MessageSquare },
+  { id: 'pdf',     label: 'PDF',     icon: FileText },
+  { id: 'video',   label: 'Link / Video', icon: Link2 },
+];
 
 export default function AdminTalleres() {
-  const [talleres,  setTalleres]  = useState([]);
-  const [profesores, setProfesores] = useState([]);
-  const [modal,     setModal]     = useState(false);
-  const [editando,  setEditando]  = useState(null);
-  const [tabId,     setTabId]     = useState(null);
+  const [talleres,      setTalleres]      = useState([]);
+  const [profesores,    setProfesores]    = useState([]);
+  const [modal,         setModal]         = useState(false);
+  const [editando,      setEditando]      = useState(null);
+  const [tabId,         setTabId]         = useState(null);
+  const [vistaTab,      setVistaTab]      = useState('inscripciones'); // 'inscripciones' | 'camerino'
   const [inscripciones, setInscripciones] = useState([]);
-  const [form,      setForm]      = useState({ nombre: '', descripcion: '', nivel: '', horario: '', duracion: '', precio: '', cupoMaximo: '', profesorId: '', profesorNombre: '' });
-  const [guardando, setGuardando] = useState(false);
-  const [material,  setMaterial]  = useState(null);
+  const [materiales,    setMateriales]    = useState([]);
+  const [form,          setForm]          = useState({ nombre: '', descripcion: '', nivel: '', horario: '', duracion: '', precio: '', cupoMaximo: '', profesorId: '', profesorNombre: '' });
+  const [guardando,     setGuardando]     = useState(false);
+
+  // Formulario de nuevo material
+  const [nuevoMaterial, setNuevoMaterial] = useState({ tipo: 'mensaje', titulo: '', contenido: '' });
+  const [archivoPdf,    setArchivoPdf]    = useState(null);
+  const [subiendo,      setSubiendo]      = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(query(collection(db, 'talleres'), orderBy('creadoEn', 'desc')), snap => {
@@ -31,10 +43,13 @@ export default function AdminTalleres() {
     return unsub;
   }, []);
 
-  const verAlumnos = async (tallerId) => {
+  const abrirTaller = async (tallerId, vista = 'inscripciones') => {
     setTabId(tallerId);
-    const snap = await getDocs(query(collection(db, 'inscripciones'), where('tallerId', '==', tallerId)));
-    setInscripciones(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setVistaTab(vista);
+    const insSnap = await getDocs(query(collection(db, 'inscripciones'), where('tallerId', '==', tallerId)));
+    setInscripciones(insSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const matSnap = await getDocs(query(collection(db, 'talleres', tallerId, 'materiales'), orderBy('orden', 'asc')));
+    setMateriales(matSnap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
   const handleGuardar = async () => {
@@ -66,11 +81,74 @@ export default function AdminTalleres() {
     finally { setGuardando(false); }
   };
 
-  const confirmarInscripcion = async (id) => {
-    await updateDoc(doc(db, 'inscripciones', id), { estado: 'confirmada' });
-    setInscripciones(prev => prev.map(i => i.id === id ? { ...i, estado: 'confirmada' } : i));
-    toast.success('Inscripción confirmada');
+  // ── Inscripciones ────────────────────────────────────────────────────
+  const aprobarInscripcion = async (i) => {
+    await updateDoc(doc(db, 'inscripciones', i.id), { estado: 'aprobada' });
+    setInscripciones(prev => prev.map(x => x.id === i.id ? { ...x, estado: 'aprobada' } : x));
+    toast.success('Inscripción aprobada — el alumno ya tiene acceso al Camerino');
   };
+
+  const rechazarInscripcion = async (id) => {
+    await updateDoc(doc(db, 'inscripciones', id), { estado: 'rechazada' });
+    setInscripciones(prev => prev.map(x => x.id === id ? { ...x, estado: 'rechazada' } : x));
+    toast.success('Inscripción rechazada');
+  };
+
+  const quitarAcceso = async (id) => {
+    if (!confirm('¿Quitar el acceso de este alumno al taller?')) return;
+    await deleteDoc(doc(db, 'inscripciones', id));
+    setInscripciones(prev => prev.filter(x => x.id !== id));
+    toast.success('Acceso removido');
+  };
+
+  // ── Camerino / materiales ────────────────────────────────────────────
+  const agregarMaterial = async () => {
+    if (!nuevoMaterial.titulo.trim()) { toast.error('El título es requerido'); return; }
+    if (nuevoMaterial.tipo !== 'pdf' && !nuevoMaterial.contenido.trim()) { toast.error('El contenido es requerido'); return; }
+    if (nuevoMaterial.tipo === 'pdf' && !archivoPdf) { toast.error('Sube un archivo PDF'); return; }
+
+    setSubiendo(true);
+    try {
+      let contenido = nuevoMaterial.contenido.trim();
+      if (nuevoMaterial.tipo === 'pdf') {
+        contenido = await subirArchivo(archivoPdf, 'materiales-camerino');
+      }
+
+      await addDoc(collection(db, 'talleres', tabId, 'materiales'), {
+        tipo:         nuevoMaterial.tipo,
+        titulo:       DOMPurify.sanitize(nuevoMaterial.titulo.trim()),
+        contenido:    nuevoMaterial.tipo === 'mensaje' ? DOMPurify.sanitize(contenido) : contenido,
+        desbloqueado: false,
+        orden:        materiales.length,
+        creadoEn:     serverTimestamp(),
+      });
+
+      const matSnap = await getDocs(query(collection(db, 'talleres', tabId, 'materiales'), orderBy('orden', 'asc')));
+      setMateriales(matSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setNuevoMaterial({ tipo: 'mensaje', titulo: '', contenido: '' });
+      setArchivoPdf(null);
+      toast.success('Material agregado');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const toggleDesbloqueo = async (material) => {
+    await updateDoc(doc(db, 'talleres', tabId, 'materiales', material.id), { desbloqueado: !material.desbloqueado });
+    setMateriales(prev => prev.map(m => m.id === material.id ? { ...m, desbloqueado: !m.desbloqueado } : m));
+  };
+
+  const eliminarMaterial = async (id) => {
+    if (!confirm('¿Eliminar este material?')) return;
+    await deleteDoc(doc(db, 'talleres', tabId, 'materiales', id));
+    setMateriales(prev => prev.filter(m => m.id !== id));
+    toast.success('Material eliminado');
+  };
+
+  const alumnosAprobados = inscripciones.filter(i => i.estado === 'aprobada');
+  const alumnosPendientes = inscripciones.filter(i => i.estado === 'pendiente');
 
   return (
     <div>
@@ -91,72 +169,162 @@ export default function AdminTalleres() {
             <div className="mt-3 text-sm space-y-1 text-gray-500">
               <p>🕐 {t.horario}</p>
               <p>👤 {t.profesorNombre || '—'}</p>
-              <p className="font-heading font-bold text-azul">${t.precio} USD</p>
+              {t.precio > 0 && <p className="font-heading font-bold text-azul">${t.precio} USD</p>}
             </div>
-            <div className="flex gap-2 mt-4">
+            <div className="grid grid-cols-3 gap-2 mt-4">
               <button onClick={() => { setEditando(t); setForm({ nombre: t.nombre, descripcion: t.descripcion || '', nivel: t.nivel || '', horario: t.horario || '', duracion: t.duracion || '', precio: t.precio || '', cupoMaximo: t.cupoMaximo || '', profesorId: t.profesorId || '', profesorNombre: t.profesorNombre || '' }); setModal(true); }}
-                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-sm font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors">
-                <Edit2 size={14} /> Editar
+                className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors">
+                <Edit2 size={13} /> Editar
               </button>
-              <button onClick={() => verAlumnos(t.id)}
-                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-sm font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors">
-                <Users size={14} /> Alumnos
+              <button onClick={() => abrirTaller(t.id, 'inscripciones')}
+                className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors">
+                <Users size={13} /> Alumnos
+              </button>
+              <button onClick={() => abrirTaller(t.id, 'camerino')}
+                className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors">
+                <FileText size={13} /> Camerino
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Panel de alumnos */}
+      {/* Panel de gestión del taller */}
       {tabId && (
         <div className="mt-8 card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading font-bold text-lg text-gray-900">Inscripciones del taller</h2>
+            <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
+              <button onClick={() => setVistaTab('inscripciones')}
+                className={clsx('px-4 py-2 rounded-lg text-sm font-heading font-bold transition-colors',
+                  vistaTab === 'inscripciones' ? 'bg-white shadow-sm text-azul' : 'text-gray-500')}>
+                Inscripciones {alumnosPendientes.length > 0 && `(${alumnosPendientes.length})`}
+              </button>
+              <button onClick={() => setVistaTab('camerino')}
+                className={clsx('px-4 py-2 rounded-lg text-sm font-heading font-bold transition-colors',
+                  vistaTab === 'camerino' ? 'bg-white shadow-sm text-azul' : 'text-gray-500')}>
+                Camerino
+              </button>
+            </div>
             <button onClick={() => setTabId(null)}><X size={18} className="text-gray-400" /></button>
           </div>
-          {inscripciones.length === 0
-            ? <p className="text-gray-400 text-sm font-heading">Sin inscripciones</p>
-            : <div className="space-y-3">
-                {inscripciones.map(i => (
-  <div key={i.id} className="p-4 rounded-xl bg-gray-50 space-y-2">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="font-heading font-bold text-sm text-gray-900">{i.comprador?.nombre}</p>
-        <p className="text-xs text-gray-400">{i.comprador?.email} · {i.comprador?.cedula}</p>
-      </div>
-      <span className={`badge ${i.estado === 'confirmada' ? 'badge-confirmed' : i.estado === 'cancelada' ? 'badge-cancelled' : 'badge-pending'}`}>{i.estado}</span>
-    </div>
-    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-      <p><span className="font-heading font-bold">Método:</span> {i.metodoPago?.replace('_', ' ')}</p>
-      <p><span className="font-heading font-bold">Referencia:</span> {i.referencia}</p>
-      <p><span className="font-heading font-bold">Teléfono:</span> {i.comprador?.telefono}</p>
-    </div>
-    {i.comprobanteUrl && (
-      <a href={i.comprobanteUrl} target="_blank" rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 text-xs text-azul hover:text-azul-dark font-heading font-bold">
-        Ver comprobante →
-      </a>
-    )}
-    {i.estado === 'pendiente' && (
-      <div className="flex gap-2 pt-1">
-        <button onClick={() => confirmarInscripcion(i.id)} className="btn-primary text-xs py-1.5 px-3">Confirmar</button>
-        <button onClick={async () => {
-          await updateDoc(doc(db, 'inscripciones', i.id), { estado: 'cancelada' });
-          setInscripciones(prev => prev.map(x => x.id === i.id ? { ...x, estado: 'cancelada' } : x));
-          toast.success('Inscripción rechazada');
-        }} className="text-xs py-1.5 px-3 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold">
-          Rechazar
-        </button>
-      </div>
-    )}
-  </div>
-))}
+
+          {/* Vista Inscripciones */}
+          {vistaTab === 'inscripciones' && (
+            inscripciones.length === 0
+              ? <p className="text-gray-400 text-sm font-heading text-center py-6">Sin solicitudes de inscripción</p>
+              : <div className="space-y-3">
+                  {inscripciones.map(i => (
+                    <div key={i.id} className="p-4 rounded-xl bg-gray-50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-heading font-bold text-sm text-gray-900">{i.alumno?.nombre}</p>
+                          <p className="text-xs text-gray-400">{i.alumno?.email} · {i.alumno?.cedula}</p>
+                        </div>
+                        <span className={clsx('badge',
+                          i.estado === 'aprobada' ? 'badge-confirmed' :
+                          i.estado === 'rechazada' ? 'badge-cancelled' : 'badge-pending'
+                        )}>{i.estado}</span>
+                      </div>
+                      {i.alumno?.telefono && (
+                        <p className="text-xs text-gray-500">📞 {i.alumno.telefono}</p>
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        {i.estado === 'pendiente' && (
+                          <>
+                            <button onClick={() => aprobarInscripcion(i)} className="btn-primary text-xs py-1.5 px-3">Aprobar</button>
+                            <button onClick={() => rechazarInscripcion(i.id)} className="text-xs py-1.5 px-3 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold">Rechazar</button>
+                          </>
+                        )}
+                        {i.estado === 'aprobada' && (
+                          <button onClick={() => quitarAcceso(i.id)} className="text-xs py-1.5 px-3 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 font-heading font-bold">Quitar acceso</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+          )}
+
+          {/* Vista Camerino */}
+          {vistaTab === 'camerino' && (
+            <div className="space-y-6">
+              <p className="text-sm text-gray-500">
+                {alumnosAprobados.length} alumno{alumnosAprobados.length !== 1 ? 's' : ''} con acceso a este Camerino
+              </p>
+
+              {/* Formulario nuevo material */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="font-heading font-bold text-sm text-gray-700 mb-3">Agregar material</p>
+                <div className="flex gap-2 mb-3">
+                  {TIPOS_MATERIAL.map(({ id, label, icon: Icon }) => (
+                    <button key={id} type="button" onClick={() => setNuevoMaterial(p => ({ ...p, tipo: id }))}
+                      className={clsx('flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-heading font-bold border-2 transition-all',
+                        nuevoMaterial.tipo === id ? 'border-azul bg-azul text-white' : 'border-gray-200 text-gray-600 hover:border-azul')}>
+                      <Icon size={13} /> {label}
+                    </button>
+                  ))}
+                </div>
+                <input type="text" placeholder="Título del material" value={nuevoMaterial.titulo}
+                  onChange={e => setNuevoMaterial(p => ({ ...p, titulo: e.target.value }))}
+                  className="input-field text-sm py-2 mb-3" />
+
+                {nuevoMaterial.tipo === 'mensaje' && (
+                  <textarea placeholder="Escribe el mensaje..." value={nuevoMaterial.contenido}
+                    onChange={e => setNuevoMaterial(p => ({ ...p, contenido: e.target.value }))}
+                    className="input-field text-sm resize-none" rows={3} />
+                )}
+                {nuevoMaterial.tipo === 'video' && (
+                  <input type="url" placeholder="https://youtube.com/... o cualquier link" value={nuevoMaterial.contenido}
+                    onChange={e => setNuevoMaterial(p => ({ ...p, contenido: e.target.value }))}
+                    className="input-field text-sm py-2" />
+                )}
+                {nuevoMaterial.tipo === 'pdf' && (
+                  <label className="flex items-center gap-3 p-3 border-2 border-dashed rounded-xl cursor-pointer hover:border-azul transition-colors">
+                    <input type="file" accept="application/pdf" className="hidden" onChange={e => setArchivoPdf(e.target.files?.[0] || null)} />
+                    {archivoPdf ? <><CheckCircle size={18} className="text-green-500" /><span className="text-sm text-green-600">{archivoPdf.name}</span></> : <><Upload size={18} className="text-gray-400" /><span className="text-sm text-gray-400">Subir archivo PDF</span></>}
+                  </label>
+                )}
+
+                <button onClick={agregarMaterial} disabled={subiendo} className="btn-primary w-full mt-3 py-2.5 text-sm gap-2">
+                  {subiendo ? <span className="spinner w-4 h-4" /> : <><Plus size={15} /> Agregar al Camerino</>}
+                </button>
               </div>
-          }
+
+              {/* Lista de materiales */}
+              <div className="space-y-2">
+                {materiales.length === 0
+                  ? <p className="text-center text-gray-400 text-sm py-6 font-heading">Aún no hay materiales en este Camerino</p>
+                  : materiales.map(m => {
+                      const Icon = TIPOS_MATERIAL.find(t => t.id === m.tipo)?.icon || FileText;
+                      return (
+                        <div key={m.id} className={clsx('flex items-center gap-3 p-3.5 rounded-xl border transition-colors',
+                          m.desbloqueado ? 'bg-green-50/50 border-green-100' : 'bg-gray-50 border-gray-100')}>
+                          <div className={clsx('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                            m.desbloqueado ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400')}>
+                            <Icon size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-heading font-bold text-sm text-gray-900 truncate">{m.titulo}</p>
+                            <p className="text-xs text-gray-400 capitalize">{m.tipo}</p>
+                          </div>
+                          <button onClick={() => toggleDesbloqueo(m)}
+                            className={clsx('flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-colors flex-shrink-0',
+                              m.desbloqueado ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-200 text-gray-600 hover:bg-gray-300')}>
+                            {m.desbloqueado ? <><Unlock size={12} /> Visible</> : <><Lock size={12} /> Bloqueado</>}
+                          </button>
+                          <button onClick={() => eliminarMaterial(m.id)} className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors text-gray-300 flex-shrink-0">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      );
+                    })
+                }
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal crear/editar taller */}
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(false)}>
           <div className="modal-container max-w-xl p-6" onClick={e => e.stopPropagation()}>
