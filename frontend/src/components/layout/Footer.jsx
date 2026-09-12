@@ -97,7 +97,7 @@ export default function Footer() {
                 { to: '/talleres',  label: 'Talleres de Actuación' },
                 { to: '/talleres',  label: 'Cursos para Niños' },
                 { to: '/talleres',  label: 'Talleres Profesionales' },
-                { to: '/cartelera', label: 'Comprar Entradas' },
+                { to: '/cartelera', label: 'Ver Cartelera' },
                 { to: '/registro',  label: 'Crear Cuenta' },
                 { to: '/login',     label: 'Iniciar Sesión' },
               ].map(({ to, label }, i) => (
@@ -158,19 +158,30 @@ export default function Footer() {
         </div>
 
         {/* Línea inferior */}
-        <div className="mt-14 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-gray-500 text-sm">
-            © {year} Tapete Teatro. Todos los derechos reservados.
-          </p>
-          <p className="text-gray-600 text-xs">
-            Diseño por{' '}
-            <a href="https://www.instagram.com/deblancox/" target="_blank" rel="noopener noreferrer"
-              className="text-gray-500 hover:text-cyan transition-colors">
-              Derian Blanco
-            </a>
-            {' · '}
-            Desarrollo digital
-          </p>
+        <div className="mt-14 pt-8 border-t border-white/10 flex flex-col gap-5">
+          {/* Links legales */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs">
+            <Link to="/aviso-legal" className="text-gray-500 hover:text-cyan transition-colors">Aviso Legal</Link>
+            <span className="text-gray-700">·</span>
+            <Link to="/politica-privacidad" className="text-gray-500 hover:text-cyan transition-colors">Política de Privacidad</Link>
+            <span className="text-gray-700">·</span>
+            <Link to="/politica-cookies" className="text-gray-500 hover:text-cyan transition-colors">Política de Cookies</Link>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-gray-500 text-sm text-center sm:text-left">
+              © {year} Asociación Civil "Tapete (Taller Permanente de Teatro)" — RIF J-404914919. Todos los derechos reservados.
+            </p>
+            <p className="text-gray-600 text-xs">
+              Diseño por{' '}
+              <a href="https://www.instagram.com/deblancox/" target="_blank" rel="noopener noreferrer"
+                className="text-gray-500 hover:text-cyan transition-colors">
+                Derian Blanco
+              </a>
+              {' · '}
+              Desarrollo digital
+            </p>
+          </div>
         </div>
       </div>
     </footer>

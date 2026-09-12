@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import WhatsAppFloat from './components/common/WhatsAppFloat';
+import BannerCookies from './components/common/BannerCookies';
 
 // ── Páginas públicas (lazy loading) ───────────────────────────────────
 const HomePage      = lazy(() => import('./pages/public/HomePage'));
@@ -18,6 +19,10 @@ const TallerDetalle = lazy(() => import('./pages/public/TallerDetalle'));
 const Noticias      = lazy(() => import('./pages/public/Noticias'));
 const NoticiaDetalle= lazy(() => import('./pages/public/NoticiaDetalle'));
 const Contacto      = lazy(() => import('./pages/public/Contacto'));
+const PoliticaPrivacidad = lazy(() => import('./pages/public/PoliticaPrivacidad'));
+const AvisoLegal         = lazy(() => import('./pages/public/AvisoLegal'));
+const PoliticaCookies    = lazy(() => import('./pages/public/PoliticaCookies'));
+
 
 // ── Auth pages ─────────────────────────────────────────────────────────
 const Login         = lazy(() => import('./pages/auth/Login'));
@@ -117,6 +122,17 @@ function AppRoutes() {
         <Route path="/contacto" element={
           <PublicLayout><Contacto /></PublicLayout>
         } />
+        <Route path="/politica-privacidad" element={
+  <PublicLayout><PoliticaPrivacidad /></PublicLayout>
+} />
+
+<Route path="/aviso-legal" element={
+  <PublicLayout><AvisoLegal /></PublicLayout>
+} />
+
+<Route path="/politica-cookies" element={
+  <PublicLayout><PoliticaCookies /></PublicLayout>
+} />
 
         {/* ── Auth ───────────────────────────────────────────────── */}
         <Route path="/login" element={
@@ -179,7 +195,8 @@ function AppRoutes() {
           </PublicLayout>
         } />
 
-      </Routes>
+            </Routes>
+      <BannerCookies />
     </Suspense>
   );
 }
