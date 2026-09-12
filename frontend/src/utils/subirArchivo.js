@@ -1,28 +1,24 @@
-import { auth } from '../services/firebase';
+// src/utils/subirArchivo.js
+// Sube archivos directo a Cloudinary usando un upload preset sin firma
+export async function subirArchivo(archivo, carpeta = 'general') {
+  const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const UPLOAD_PRESET = 'tapete_uploads';
 
-export async function subirArchivo(archivo, carpeta = 'comprobantes') {
   const formData = new FormData();
-  formData.append('archivo', archivo);
-  formData.append('carpeta', carpeta);
+  formData.append('file', archivo);
+  formData.append('upload_preset', UPLOAD_PRESET);
+  formData.append('folder', carpeta);
 
-  // Intentar obtener token si hay sesión, si no enviar sin token
-  const headers = {};
-  try {
-    if (auth.currentUser) {
-      const token = await auth.currentUser.getIdToken();
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-  } catch {
-    // Sin sesión, continuar sin token
-  }
-
-  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/upload`, {
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
     method: 'POST',
-    headers,
     body: formData,
   });
 
-  if (!res.ok) throw new Error('Error al subir archivo');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || 'Error al subir el archivo');
+  }
+
   const data = await res.json();
-  return data.url;
+  return data.secure_url;
 }
