@@ -1,8 +1,8 @@
 // src/pages/admin/AdminUsuarios.jsx
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, where, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { Search, CheckCircle, XCircle } from 'lucide-react';
+import { Search, CheckCircle, XCircle, X, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -14,6 +14,9 @@ export default function AdminUsuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
+  const [modalTalleres, setModalTalleres] = useState(null);
+  const [inscripcionesUsuario, setInscripcionesUsuario] = useState([]);
+  const [cargandoInscripciones, setCargandoInscripciones] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(query(collection(db, 'users'), orderBy('creadoEn', 'desc')), snap => {
@@ -40,6 +43,26 @@ export default function AdminUsuarios() {
     toast.success(activo ? 'Cuenta desactivada' : 'Cuenta activada');
   };
 
+  const verTalleres = async (usuario) => {
+    setModalTalleres(usuario);
+    setCargandoInscripciones(true);
+    try {
+      const snap = await getDocs(query(collection(db, 'inscripciones'), where('userId', '==', usuario.id)));
+      setInscripcionesUsuario(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      toast.error('Error al cargar inscripciones');
+    } finally {
+      setCargandoInscripciones(false);
+    }
+  };
+
+  const quitarAccesoTaller = async (inscripcionId) => {
+    if (!confirm('¿Quitar el acceso de este alumno a este taller?')) return;
+    await updateDoc(doc(db, 'inscripciones', inscripcionId), { estado: 'rechazada' });
+    setInscripcionesUsuario(prev => prev.map(i => i.id === inscripcionId ? { ...i, estado: 'rechazada' } : i));
+    toast.success('Acceso removido');
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -63,6 +86,7 @@ export default function AdminUsuarios() {
                 <th className="px-5 py-3 text-left hidden md:table-cell">Cédula</th>
                 <th className="px-5 py-3 text-left hidden lg:table-cell">Registro</th>
                 <th className="px-5 py-3 text-center">Rol</th>
+                <th className="px-5 py-3 text-center">Talleres</th>
                 <th className="px-5 py-3 text-center">Estado</th>
               </tr></thead>
               <tbody className="divide-y divide-gray-50">
@@ -90,6 +114,12 @@ export default function AdminUsuarios() {
                       </select>
                     </td>
                     <td className="px-5 py-3 text-center">
+                      <button onClick={() => verTalleres(u)}
+                        className="inline-flex items-center gap-1 text-xs font-heading font-bold text-azul hover:text-azul-dark transition-colors">
+                        <BookOpen size={13} /> Ver
+                      </button>
+                    </td>
+                    <td className="px-5 py-3 text-center">
                       <button onClick={() => toggleActivo(u.id, u.activo)}
                         className={clsx('p-1.5 rounded-lg transition-colors', u.activo ? 'text-green-500 hover:bg-green-50' : 'text-gray-300 hover:bg-gray-100')}>
                         {u.activo ? <CheckCircle size={18} /> : <XCircle size={18} />}
@@ -102,6 +132,47 @@ export default function AdminUsuarios() {
           </div>
         )}
       </div>
+
+      {/* Modal de talleres del usuario */}
+      {modalTalleres && (
+        <div className="modal-overlay" onClick={() => setModalTalleres(null)}>
+          <div className="modal-container max-w-lg p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="font-heading font-bold text-xl text-gray-900">Talleres de {modalTalleres.nombre}</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{modalTalleres.email}</p>
+              </div>
+              <button onClick={() => setModalTalleres(null)}><X size={20} className="text-gray-400" /></button>
+            </div>
+
+            {cargandoInscripciones ? (
+              <div className="py-10 flex justify-center"><div className="spinner w-8 h-8" /></div>
+            ) : inscripcionesUsuario.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-8 font-heading">Sin inscripciones a talleres</p>
+            ) : (
+              <div className="space-y-3">
+                {inscripcionesUsuario.map(i => (
+                  <div key={i.id} className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 border border-gray-100">
+                    <div>
+                      <p className="font-heading font-bold text-sm text-gray-900">{i.tallerNombre}</p>
+                      <span className={clsx('badge text-xs mt-1',
+                        i.estado === 'aprobada' ? 'badge-confirmed' :
+                        i.estado === 'rechazada' ? 'badge-cancelled' : 'badge-pending'
+                      )}>{i.estado}</span>
+                    </div>
+                    {i.estado === 'aprobada' && (
+                      <button onClick={() => quitarAccesoTaller(i.id)}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold transition-colors">
+                        Quitar acceso
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
