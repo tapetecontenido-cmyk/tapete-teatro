@@ -177,6 +177,10 @@ export default function Navbar() {
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-azul transition-colors">
                         <User size={16} /> Mi Perfil
                       </Link>
+                      <Link to="/camerino" onClick={() => setUserMenu(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-azul transition-colors">
+                       <Drama size={16} /> Mi Camerino
+                      </Link>
                       {(esAdmin || esProfesor) && (
                         <Link to="/admin" onClick={() => setUserMenu(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-azul transition-colors">

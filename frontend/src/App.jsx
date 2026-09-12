@@ -24,6 +24,7 @@ const Login         = lazy(() => import('./pages/auth/Login'));
 const Registro      = lazy(() => import('./pages/auth/Registro'));
 const RecuperarPass = lazy(() => import('./pages/auth/RecuperarPass'));
 const PerfilAlumno  = lazy(() => import('./pages/auth/PerfilAlumno'));
+const Camerino = lazy(() => import('./pages/auth/Camerino'));
 
 // ── Admin pages ────────────────────────────────────────────────────────
 const AdminDashboard    = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -135,6 +136,12 @@ function AppRoutes() {
             <PublicLayout><PerfilAlumno /></PublicLayout>
           </ProtectedRoute>
         } />
+
+        <Route path="/camerino" element={
+  <ProtectedRoute>
+    <PublicLayout><Camerino /></PublicLayout>
+  </ProtectedRoute>
+} />
 
         {/* ── Admin (solo admin y profesor) ──────────────────────── */}
         <Route path="/admin" element={
