@@ -1,7 +1,7 @@
 // src/components/layout/Navbar.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Bell, Menu, X, ChevronDown, LogOut, User, Settings } from 'lucide-react';
+import { Bell, Menu, X, ChevronDown, LogOut, User, Settings, Drama } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/firebase';
