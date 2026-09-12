@@ -241,7 +241,7 @@ export default function HomePage() {
     <div className="min-h-screen">
 
       {/* ── HERO ──────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center overflow-hidden bg-white">
+      <section className="relative min-h-[100svh] flex items-center overflow-hidden bg-white">
         <div className="absolute inset-0 hero-pattern" />
         <div className="absolute top-1/4 right-10 w-64 h-64 rounded-full bg-cyan/10 blur-3xl animate-float" />
         <div className="absolute bottom-1/4 left-10 w-80 h-80 rounded-full bg-azul/8 blur-3xl animate-float" style={{ animationDelay: '1s' }} />
