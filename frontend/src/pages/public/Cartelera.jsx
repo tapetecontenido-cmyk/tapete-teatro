@@ -4,15 +4,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { Ticket, Search, Filter } from 'lucide-react';
+import { Ticket, Search } from 'lucide-react';
 import { clsx } from 'clsx';
-
-function BadgeDisponibilidad({ disponibles, total }) {
-  const pct = total > 0 ? disponibles / total : 0;
-  if (disponibles === 0)  return <span className="badge badge-agotado">Agotado</span>;
-  if (pct <= 0.2)         return <span className="badge badge-pocas">Pocas entradas</span>;
-  return <span className="badge badge-disponible">Disponible</span>;
-}
 
 export default function Cartelera() {
   const [obras,    setObras]    = useState([]);
@@ -70,7 +63,7 @@ export default function Cartelera() {
         {/* Grid de obras */}
         {cargando ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[1,2,3,4].map(i => <div key={i} className="rounded-2xl bg-gray-100 aspect-[2/3] animate-pulse" />)}
+            {[1,2,3,4].map(i => <div key={i} className="rounded-2xl bg-gray-100 aspect-[4/5] animate-pulse" />)}
           </div>
         ) : obrasFiltradas.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
@@ -81,21 +74,17 @@ export default function Cartelera() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {obrasFiltradas.map(obra => (
               <Link key={obra.id} to={`/cartelera/${obra.id}`} className="card group overflow-hidden flex flex-col">
-                <div className="relative aspect-[2/3] overflow-hidden bg-gray-100">
+                <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
                   {obra.posterUrl
                     ? <img src={obra.posterUrl} alt={obra.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     : <div className="w-full h-full bg-gradient-brand flex items-center justify-center"><Ticket size={48} className="text-white/40" /></div>
                   }
-                  <div className="absolute top-3 left-3">
-                    <BadgeDisponibilidad disponibles={obra.asientosDisponibles || 100} total={obra.asientosTotal || 100} />
-                  </div>
                 </div>
                 <div className="p-4 flex flex-col flex-1">
                   <span className="text-xs font-heading font-bold text-cyan uppercase tracking-wider">{obra.genero}</span>
                   <h3 className="font-display text-lg text-gray-900 mt-1 leading-tight">{obra.nombre}</h3>
                   <p className="text-gray-500 text-sm mt-1 line-clamp-2 flex-1">{obra.descripcion}</p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <p className="font-heading font-bold text-azul">${obra.precioGeneral} USD</p>
+                  <div className="mt-3 flex items-center justify-end">
                     <span className="text-xs font-heading font-bold text-azul">Ver más →</span>
                   </div>
                 </div>

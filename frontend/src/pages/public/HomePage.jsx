@@ -31,16 +31,10 @@ function AnimatedCounter({ end, suffix = '', duration = 1500 }) {
   return <span ref={ref} style={{ fontFamily: '"Bebas Neue", sans-serif' }}>{count}{suffix}</span>;
 }
 
-function BadgeDisponibilidad({ disponibles, total }) {
-  if (disponibles === 0)          return <span className="badge badge-agotado">Agotado</span>;
-  if (disponibles / total <= 0.2) return <span className="badge badge-pocas">Pocas Entradas</span>;
-  return <span className="badge badge-disponible">Disponible</span>;
-}
-
 function ObraCard({ obra }) {
   return (
     <Link to={`/cartelera/${obra.id}`} className="card group overflow-hidden flex flex-col">
-      <div className="relative aspect-[2/3] overflow-hidden bg-gray-100">
+      <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
         {obra.posterUrl ? (
           <img src={obra.posterUrl} alt={obra.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
@@ -48,11 +42,8 @@ function ObraCard({ obra }) {
             <Ticket size={48} className="text-white/40" />
           </div>
         )}
-        <div className="absolute top-3 left-3">
-          <BadgeDisponibilidad disponibles={obra.asientosDisponibles || 100} total={obra.asientosTotal || 100} />
-        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-          <span className="text-white font-heading font-bold text-sm flex items-center gap-1">Ver entradas <ArrowRight size={14} /></span>
+          <span className="text-white font-heading font-bold text-sm flex items-center gap-1">Ver detalles <ArrowRight size={14} /></span>
         </div>
       </div>
       <div className="p-5 flex flex-col flex-1">
@@ -65,12 +56,8 @@ function ObraCard({ obra }) {
             <span>{format(obra.proximaFuncion.toDate?.() || new Date(obra.proximaFuncion), "d MMM yyyy · HH:mm", { locale: es })}</span>
           </div>
         )}
-        <div className="mt-4 flex items-center justify-between">
-          <div>
-            <span className="text-xs text-gray-400">Desde</span>
-            <p className="font-heading font-bold text-azul">${obra.precioGeneral} USD</p>
-          </div>
-          <span className="btn-primary text-xs py-2 px-4">Comprar</span>
+        <div className="mt-4 flex items-center justify-end">
+          <span className="btn-primary text-xs py-2 px-4">Ver más</span>
         </div>
       </div>
     </Link>
@@ -97,7 +84,9 @@ function TallerCard({ taller }) {
       </div>
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div><p className="text-xs text-gray-400 uppercase tracking-wide font-heading">Horario</p><p className="text-gray-700 font-medium">{taller.horario}</p></div>
-        <div><p className="text-xs text-gray-400 uppercase tracking-wide font-heading">Precio</p><p className="font-heading font-bold text-azul">${taller.precio} USD</p></div>
+        {taller.precio > 0 && (
+          <div><p className="text-xs text-gray-400 uppercase tracking-wide font-heading">Precio</p><p className="font-heading font-bold text-azul">${taller.precio} USD</p></div>
+        )}
       </div>
       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
         <span className="text-xs text-gray-400">Prof. {taller.profesorNombre}</span>
@@ -169,7 +158,6 @@ function CarruselObras({ obras }) {
     <div className="relative">
       <div className="absolute inset-0 bg-gradient-brand rounded-3xl opacity-10 transform rotate-3" />
       <div className="relative bg-gradient-brand rounded-3xl p-1 shadow-brand-lg">
-        {/* Clickeable — lleva a la obra */}
         <div
           className="bg-white rounded-[1.4rem] overflow-hidden aspect-[4/5] relative cursor-pointer"
           onClick={() => navigate(`/cartelera/${obra.id}`)}
@@ -186,9 +174,9 @@ function CarruselObras({ obras }) {
               <span className="badge bg-white/20 text-white text-xs mb-2 self-start">{obra.genero}</span>
               <h3 className="font-display text-2xl text-white leading-tight">{obra.nombre}</h3>
               <div className="flex items-center justify-between mt-3">
-                <span className="text-white font-heading font-bold text-sm">Desde ${obra.precioGeneral} USD</span>
+                <span className="text-white font-heading font-bold text-sm">En cartelera</span>
                 <span className="bg-azul text-white text-xs font-heading font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                  Ver entradas <ArrowRight size={12} />
+                  Ver detalles <ArrowRight size={12} />
                 </span>
               </div>
             </div>
@@ -218,7 +206,7 @@ function CarruselObras({ obras }) {
   );
 }
 
-// ── Icono de máscara de teatro SVG ─────────────────────────────────────
+// ── Icono de máscara de teatro ─────────────────────────────────────────
 function MascaraTeatro() {
   return (
     <img src="/mascara-teatro.png" alt="Máscaras de teatro" className="w-10 h-10 object-contain" />
@@ -290,13 +278,13 @@ export default function HomePage() {
               <div className="mt-10 flex items-center gap-4 animate-fade-up animate-delay-400">
                 <div className="flex -space-x-2">
                   {[
-  { ini: 'AC', foto: '/antonio.jpg' },
-  { ini: 'DB', foto: '/daifra.jpg' },
-].map(({ ini, foto }, i) => (
-  <div key={i} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
-    <img src={foto} alt={ini} className="w-full h-full object-cover" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML=`<span class="w-full h-full bg-gradient-brand flex items-center justify-center text-white text-xs font-bold">${ini}</span>`; }} />
-  </div>
-))}
+                    { ini: 'AC', foto: '/antonio.jpg' },
+                    { ini: 'DB', foto: '/daifra.jpg' },
+                  ].map(({ ini, foto }, i) => (
+                    <div key={i} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
+                      <img src={foto} alt={ini} className="w-full h-full object-cover" onError={e => { e.target.style.display='none'; e.target.parentElement.innerHTML=`<span class="w-full h-full bg-gradient-brand flex items-center justify-center text-white text-xs font-bold">${ini}</span>`; }} />
+                    </div>
+                  ))}
                 </div>
                 <div>
                   <p className="text-sm font-heading font-bold text-gray-900">Antonio Cuevas · Daifra Blanco</p>
@@ -312,11 +300,11 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Scroll indicator — máscara de teatro */}
+        {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce cursor-pointer"
              onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}>
           <MascaraTeatro />
-          <span className="text-xs font-heading font-bold tracking-widest uppercase bg-azul text-white px-3 py-1 rounded-lg">¡Reserva ya!</span>
+          <span className="text-xs font-heading font-bold tracking-widest uppercase bg-azul text-white px-3 py-1 rounded-lg">Descubre más</span>
           <div className="w-px h-8 bg-gradient-brand-v" />
         </div>
       </section>
@@ -355,7 +343,7 @@ export default function HomePage() {
           </div>
           {cargando ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1,2,3].map(i => <div key={i} className="rounded-2xl bg-gray-100 aspect-[2/3] animate-pulse" />)}
+              {[1,2,3].map(i => <div key={i} className="rounded-2xl bg-gray-100 aspect-[4/5] animate-pulse" />)}
             </div>
           ) : obras.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
