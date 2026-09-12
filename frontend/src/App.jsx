@@ -34,7 +34,6 @@ const Camerino = lazy(() => import('./pages/auth/Camerino'));
 // ── Admin pages ────────────────────────────────────────────────────────
 const AdminDashboard    = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminCartelera    = lazy(() => import('./pages/admin/AdminCartelera'));
-const AdminReservas     = lazy(() => import('./pages/admin/AdminReservas'));
 const AdminTalleres     = lazy(() => import('./pages/admin/AdminTalleres'));
 const AdminNoticias     = lazy(() => import('./pages/admin/AdminNoticias'));
 const AdminUsuarios     = lazy(() => import('./pages/admin/AdminUsuarios'));
@@ -166,7 +165,6 @@ function AppRoutes() {
           </ProtectedRoute>
         }>
           <Route path="cartelera"     element={<AdminCartelera />} />
-          <Route path="reservas"      element={<AdminReservas />} />
           <Route path="talleres"      element={<AdminTalleres />} />
           <Route path="noticias"      element={<AdminNoticias />} />
           <Route path="usuarios"      element={
