@@ -22,6 +22,7 @@ export default function AdminTalleres() {
   const [modal,         setModal]         = useState(false);
   const [editando,      setEditando]      = useState(null);
   const [tabId,         setTabId]         = useState(null);
+  const [tallerActivo,  setTallerActivo]  = useState(null);
   const [vistaTab,      setVistaTab]      = useState('inscripciones');
   const [inscripciones, setInscripciones] = useState([]);
   const [materiales,    setMateriales]    = useState([]);
@@ -45,6 +46,7 @@ export default function AdminTalleres() {
   const abrirTaller = async (tallerId, vista = 'inscripciones') => {
     setTabId(tallerId);
     setVistaTab(vista);
+    setTallerActivo(talleres.find(t => t.id === tallerId) || null);
     const insSnap = await getDocs(query(collection(db, 'inscripciones'), where('tallerId', '==', tallerId)));
     setInscripciones(insSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     const matSnap = await getDocs(query(collection(db, 'talleres', tallerId, 'materiales'), orderBy('orden', 'asc')));
@@ -87,6 +89,14 @@ export default function AdminTalleres() {
       await updateDoc(doc(db, 'inscripciones', i.id), { estado: 'aprobada' });
       // Agregar el uid del alumno al array de aprobados del taller (necesario para el Camerino)
       await updateDoc(doc(db, 'talleres', i.tallerId), { alumnosAprobados: arrayUnion(i.userId) });
+      // Notificar al alumno
+      await addDoc(collection(db, 'notificaciones'), {
+        userId:   i.userId,
+        titulo:   '¡Inscripción aprobada!',
+        mensaje:  `Tu inscripción al taller "${i.tallerNombre}" fue aprobada. Ya puedes ver el contenido en tu Camerino.`,
+        leida:    false,
+        creadaEn: serverTimestamp(),
+      });
       setInscripciones(prev => prev.map(x => x.id === i.id ? { ...x, estado: 'aprobada' } : x));
       toast.success('Inscripción aprobada — el alumno ya tiene acceso al Camerino');
     } catch (err) {
@@ -152,8 +162,23 @@ export default function AdminTalleres() {
   };
 
   const toggleDesbloqueo = async (material) => {
-    await updateDoc(doc(db, 'talleres', tabId, 'materiales', material.id), { desbloqueado: !material.desbloqueado });
-    setMateriales(prev => prev.map(m => m.id === material.id ? { ...m, desbloqueado: !m.desbloqueado } : m));
+    const nuevoEstado = !material.desbloqueado;
+    await updateDoc(doc(db, 'talleres', tabId, 'materiales', material.id), { desbloqueado: nuevoEstado });
+    setMateriales(prev => prev.map(m => m.id === material.id ? { ...m, desbloqueado: nuevoEstado } : m));
+
+    // Notificar a los alumnos aprobados del taller solo al desbloquear
+    if (nuevoEstado && tallerActivo?.alumnosAprobados?.length > 0) {
+      const tipoLabel = material.tipo === 'pdf' ? 'un nuevo PDF' : material.tipo === 'video' ? 'un nuevo enlace' : 'un nuevo mensaje';
+      await Promise.all(tallerActivo.alumnosAprobados.filter(Boolean).map(uid =>
+        addDoc(collection(db, 'notificaciones'), {
+          userId:   uid,
+          titulo:   'Nuevo contenido en tu Camerino',
+          mensaje:  `Tu profesor agregó ${tipoLabel} en "${tallerActivo.nombre}": ${material.titulo}`,
+          leida:    false,
+          creadaEn: serverTimestamp(),
+        })
+      ));
+    }
   };
 
   const eliminarMaterial = async (id) => {
