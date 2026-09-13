@@ -84,11 +84,13 @@ service cloud.firestore {
 
     // ── NOTIFICACIONES ────────────────────────────────────────
     match /notificaciones/{notifId} {
-      allow read:   if isAuth() && resource.data.userId == userId();
-      allow create: if isAuth() && request.resource.data.userId == userId();
-      allow update: if isAuth() && resource.data.userId == userId();
-      allow delete: if isAdmin();
-    }
+  allow read:   if isAuth() && resource.data.userId == userId();
+  // Un usuario puede crear notificaciones para sí mismo,
+  // y admin/profesor pueden crear notificaciones para cualquier alumno
+  allow create: if isAuth() && (request.resource.data.userId == userId() || isAdmin() || isProfesor());
+  allow update: if isAuth() && resource.data.userId == userId();
+  allow delete: if isAdmin();
+}
 
     // ── CONFIGURACIÓN ─────────────────────────────────────────
     match /configuracion/{docId} {
