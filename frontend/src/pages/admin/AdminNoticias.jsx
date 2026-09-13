@@ -2,8 +2,8 @@
 // Gestión de noticias con editor rich text TipTap
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../services/firebase';
+import { db } from '../../services/firebase';
+import { subirArchivo } from '../../utils/subirArchivo';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Plus, Edit2, X, Bold, Italic, List, Heading2, Upload, CheckCircle } from 'lucide-react';
@@ -76,9 +76,7 @@ export default function AdminNoticias() {
     try {
       let imagenUrl = editando?.imagenUrl || '';
       if (imagen) {
-        const ref = sRef(storage, `noticias/${Date.now()}_${imagen.name}`);
-        await uploadBytes(ref, imagen);
-        imagenUrl = await getDownloadURL(ref);
+        imagenUrl = await subirArchivo(imagen, 'noticias');
       }
       const data = {
         titulo:        DOMPurify.sanitize(form.titulo.trim()),
@@ -99,8 +97,11 @@ export default function AdminNoticias() {
         toast.success('Noticia creada');
       }
       setModal(false);
-    } catch { toast.error('Error al guardar'); }
-    finally { setGuardando(false); }
+    } catch (err) {
+      toast.error('Error al guardar: ' + err.message);
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const togglePublicado = async (id, publicado) => {
