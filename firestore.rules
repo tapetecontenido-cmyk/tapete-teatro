@@ -51,16 +51,18 @@ service cloud.firestore {
       // Camerino — solo admin/profesor, o un alumno cuyo uid esté
       // en el array 'alumnosAprobados' del taller padre, y solo si
       // el material está desbloqueado.
-      match /materiales/{materialId} {
+            match /materiales/{materialId} {
         allow read: if isAdmin() || isProfesor() ||
           (isAuth() &&
            resource.data.desbloqueado == true &&
            userId() in get(/databases/$(database)/documents/talleres/$(tallerId)).data.alumnosAprobados);
-        allow write: if isAdmin() || isProfesor();
+        allow write: if isAdmin() ||
+          (isProfesor() && get(/databases/$(database)/documents/talleres/$(tallerId)).data.profesorId == userId());
       }
       match /fotos/{fotoId} {
         allow read: if isAuth();
-        allow write: if isAdmin() || isProfesor();
+        allow write: if isAdmin() ||
+          (isProfesor() && get(/databases/$(database)/documents/talleres/$(tallerId)).data.profesorId == userId());
       }
     }
 
