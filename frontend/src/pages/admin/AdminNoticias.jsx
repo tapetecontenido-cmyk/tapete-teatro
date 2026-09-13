@@ -86,7 +86,7 @@ export default function AdminNoticias() {
         categoria:     form.categoria,
         autor:         DOMPurify.sanitize(form.autor.trim()),
         publicado:     form.publicado,
-        contenidoHtml: editor?.getHTML() || '',
+        contenidoHtml: DOMPurify.sanitize(editor?.getHTML() || ''),
         imagenUrl,
         fecha:         serverTimestamp(),
         actualizadoEn: serverTimestamp(),

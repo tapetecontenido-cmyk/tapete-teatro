@@ -6,6 +6,7 @@ import { db } from '../../services/firebase';
 import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import DOMPurify from 'dompurify';
 
 export default function NoticiaDetalle() {
   const { noticiaId } = useParams();
@@ -38,6 +39,9 @@ export default function NoticiaDetalle() {
   if (cargando) return <div className="min-h-screen flex items-center justify-center pt-20"><div className="spinner w-10 h-10" /></div>;
   if (!noticia) return null;
 
+  // Sanitizar el HTML antes de renderizarlo, como capa defensiva adicional
+  const contenidoSeguro = DOMPurify.sanitize(noticia.contenidoHtml || noticia.resumen || '');
+
   return (
     <div className="min-h-screen pt-20 pb-16">
       {/* Hero imagen */}
@@ -62,7 +66,7 @@ export default function NoticiaDetalle() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div
           className="rich-content"
-          dangerouslySetInnerHTML={{ __html: noticia.contenidoHtml || noticia.resumen || '' }}
+          dangerouslySetInnerHTML={{ __html: contenidoSeguro }}
         />
 
         {/* Artículos relacionados */}

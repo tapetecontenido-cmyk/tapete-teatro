@@ -1,41 +1,78 @@
 // src/pages/public/Contacto.jsx
-import { useState, useRef } from 'react';
-import { Phone, Instagram, Facebook, Send } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../services/firebase';
+import { Phone, Instagram, Facebook, Send, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DOMPurify from 'dompurify';
 import { Turnstile } from '@marsidev/react-turnstile';
 
 const ASUNTOS = ['Información general', 'Inscripción a talleres', 'Reserva de entradas', 'Prensa y colaboraciones', 'Otro'];
+const CLAVE_ULTIMO_ENVIO = 'tapete_ultimo_contacto';
+const ESPERA_MINUTOS = 2;
 
 export default function Contacto() {
   const [form, setForm] = useState({ nombre: '', email: '', asunto: '', mensaje: '' });
   const [enviando, setEnviando] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
+  const [segundosRestantes, setSegundosRestantes] = useState(0);
   const turnstileRef = useRef(null);
+
+  // Verificar si hay un envío reciente al cargar la página
+  useEffect(() => {
+    const ultimo = localStorage.getItem(CLAVE_ULTIMO_ENVIO);
+    if (ultimo) {
+      const transcurrido = Date.now() - parseInt(ultimo, 10);
+      const esperaMs = ESPERA_MINUTOS * 60 * 1000;
+      if (transcurrido < esperaMs) {
+        setSegundosRestantes(Math.ceil((esperaMs - transcurrido) / 1000));
+      }
+    }
+  }, []);
+
+  // Contador regresivo
+  useEffect(() => {
+    if (segundosRestantes <= 0) return;
+    const timer = setInterval(() => {
+      setSegundosRestantes(prev => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [segundosRestantes]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.nombre || !form.email || !form.asunto || !form.mensaje) { toast.error('Completa todos los campos'); return; }
     if (!captchaToken) { toast.error('Completa la verificación de seguridad'); return; }
+    if (segundosRestantes > 0) { toast.error('Espera un momento antes de enviar otro mensaje'); return; }
+
     setEnviando(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/contacto`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre:       DOMPurify.sanitize(form.nombre),
-          email:        form.email,
-          asunto:       form.asunto,
-          mensaje:      DOMPurify.sanitize(form.mensaje),
-          captchaToken,
-        }),
+      await addDoc(collection(db, 'mensajes_contacto'), {
+        nombre:   DOMPurify.sanitize(form.nombre.trim()),
+        email:    form.email.trim(),
+        asunto:   form.asunto,
+        mensaje:  DOMPurify.sanitize(form.mensaje.trim()),
+        creadoEn: serverTimestamp(),
       });
-      if (!res.ok) { toast.error('Error al enviar'); return; }
+
+      localStorage.setItem(CLAVE_ULTIMO_ENVIO, String(Date.now()));
+      setSegundosRestantes(ESPERA_MINUTOS * 60);
+
       toast.success('¡Mensaje enviado! Te responderemos pronto.');
       setForm({ nombre: '', email: '', asunto: '', mensaje: '' });
       setCaptchaToken('');
       turnstileRef.current?.reset();
-    } catch { toast.error('Error al enviar'); }
-    finally { setEnviando(false); }
+    } catch {
+      toast.error('Error al enviar');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const formatearTiempo = (s) => {
+    const min = Math.floor(s / 60);
+    const seg = s % 60;
+    return `${min}:${String(seg).padStart(2, '0')}`;
   };
 
   return (
@@ -53,6 +90,14 @@ export default function Contacto() {
           {/* Formulario */}
           <div className="card p-8">
             <h2 className="font-heading font-bold text-2xl text-gray-900 mb-6">Envíanos un mensaje</h2>
+
+            {segundosRestantes > 0 && (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-amber-700 text-sm">
+                <Clock size={16} className="flex-shrink-0" />
+                <span>Ya enviaste un mensaje. Podrás enviar otro en <strong>{formatearTiempo(segundosRestantes)}</strong>.</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
@@ -76,7 +121,6 @@ export default function Contacto() {
                 <textarea value={form.mensaje} onChange={e => setForm(p => ({ ...p, mensaje: e.target.value }))} className="input-field resize-none" rows={5} placeholder="Escribe tu mensaje aquí..." required maxLength={2000} />
               </div>
 
-              {/* Turnstile CAPTCHA */}
               <Turnstile
                 ref={turnstileRef}
                 siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
@@ -86,7 +130,7 @@ export default function Contacto() {
                 options={{ theme: 'light', language: 'es' }}
               />
 
-              <button type="submit" disabled={enviando || !captchaToken} className="btn-primary w-full py-3.5 gap-2">
+              <button type="submit" disabled={enviando || !captchaToken || segundosRestantes > 0} className="btn-primary w-full py-3.5 gap-2">
                 {enviando ? <span className="spinner w-5 h-5" /> : <><Send size={18} /> Enviar mensaje</>}
               </button>
             </form>
