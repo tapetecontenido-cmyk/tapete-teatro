@@ -7,6 +7,7 @@ import { db } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { BookOpen, FileText, Link2, MessageSquare, Lock, Download, ExternalLink, Drama } from 'lucide-react';
 import { clsx } from 'clsx';
+import AvisoVerificacion from '../../components/common/AvisoVerificacion';
 
 const ICONOS_TIPO = { mensaje: MessageSquare, pdf: FileText, video: Link2 };
 
@@ -76,6 +77,8 @@ export default function Camerino() {
   return (
     <div className="min-h-screen pt-24 pb-16 bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <AvisoVerificacion />
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">

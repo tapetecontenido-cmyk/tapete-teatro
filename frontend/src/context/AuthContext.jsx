@@ -8,6 +8,7 @@ import {
   signOut,
   updateProfile,
   sendPasswordResetEmail,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
@@ -75,7 +76,22 @@ export function AuthProvider({ children }) {
 
     await setDoc(doc(db, 'users', cred.user.uid), perfilData);
     setPerfil({ id: cred.user.uid, ...perfilData });
+
+    // Enviar email de verificación (no bloquea el registro si falla)
+    try {
+      await sendEmailVerification(cred.user);
+    } catch (err) {
+      console.warn('No se pudo enviar el email de verificación:', err.message);
+    }
+
     return cred.user;
+  };
+
+  // ── Reenviar verificación de email ──────────────────────────────────────
+  const reenviarVerificacion = async () => {
+    if (auth.currentUser) {
+      await sendEmailVerification(auth.currentUser);
+    }
   };
 
   // ── Inicio de sesión ───────────────────────────────────────────────────
@@ -95,6 +111,7 @@ export function AuthProvider({ children }) {
   const esAdmin    = perfil?.role === 'admin';
   const esProfesor = perfil?.role === 'profesor';
   const esAlumno   = perfil?.role === 'alumno';
+  const emailVerificado = user?.emailVerified ?? false;
 
   const value = {
     user,
@@ -104,10 +121,12 @@ export function AuthProvider({ children }) {
     iniciarSesion,
     cerrarSesion,
     recuperarPassword,
+    reenviarVerificacion,
     cargarPerfil,
     esAdmin,
     esProfesor,
     esAlumno,
+    emailVerificado,
   };
 
   return (
