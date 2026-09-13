@@ -1,6 +1,6 @@
 // src/pages/admin/AdminUsuarios.jsx
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, where, getDocs, deleteDoc, arrayRemove } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Search, CheckCircle, XCircle, X, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
@@ -56,11 +56,17 @@ export default function AdminUsuarios() {
     }
   };
 
-  const quitarAccesoTaller = async (inscripcionId) => {
+  const quitarAccesoTaller = async (inscripcion) => {
     if (!confirm('¿Quitar el acceso de este alumno a este taller?')) return;
-    await updateDoc(doc(db, 'inscripciones', inscripcionId), { estado: 'rechazada' });
-    setInscripcionesUsuario(prev => prev.map(i => i.id === inscripcionId ? { ...i, estado: 'rechazada' } : i));
-    toast.success('Acceso removido');
+    try {
+      await deleteDoc(doc(db, 'inscripciones', inscripcion.id));
+      // Quitar el uid del array de aprobados del taller (necesario para el Camerino)
+      await updateDoc(doc(db, 'talleres', inscripcion.tallerId), { alumnosAprobados: arrayRemove(inscripcion.userId) });
+      setInscripcionesUsuario(prev => prev.filter(i => i.id !== inscripcion.id));
+      toast.success('Acceso removido');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
   };
 
   return (
@@ -161,7 +167,7 @@ export default function AdminUsuarios() {
                       )}>{i.estado}</span>
                     </div>
                     {i.estado === 'aprobada' && (
-                      <button onClick={() => quitarAccesoTaller(i.id)}
+                      <button onClick={() => quitarAccesoTaller(i)}
                         className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold transition-colors">
                         Quitar acceso
                       </button>

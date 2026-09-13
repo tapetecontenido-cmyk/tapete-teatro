@@ -1,9 +1,9 @@
 // src/pages/admin/AdminTalleres.jsx
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, where, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { subirArchivo } from '../../utils/subirArchivo';
-import { Plus, Edit2, X, Upload, CheckCircle, BookOpen, Users, FileText, Link2, MessageSquare, Lock, Unlock, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Edit2, X, Upload, CheckCircle, BookOpen, Users, FileText, Link2, MessageSquare, Lock, Unlock, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DOMPurify from 'dompurify';
 import { clsx } from 'clsx';
@@ -22,13 +22,12 @@ export default function AdminTalleres() {
   const [modal,         setModal]         = useState(false);
   const [editando,      setEditando]      = useState(null);
   const [tabId,         setTabId]         = useState(null);
-  const [vistaTab,      setVistaTab]      = useState('inscripciones'); // 'inscripciones' | 'camerino'
+  const [vistaTab,      setVistaTab]      = useState('inscripciones');
   const [inscripciones, setInscripciones] = useState([]);
   const [materiales,    setMateriales]    = useState([]);
   const [form,          setForm]          = useState({ nombre: '', descripcion: '', nivel: '', horario: '', duracion: '', precio: '', cupoMaximo: '', profesorId: '', profesorNombre: '' });
   const [guardando,     setGuardando]     = useState(false);
 
-  // Formulario de nuevo material
   const [nuevoMaterial, setNuevoMaterial] = useState({ tipo: 'mensaje', titulo: '', contenido: '' });
   const [archivoPdf,    setArchivoPdf]    = useState(null);
   const [subiendo,      setSubiendo]      = useState(false);
@@ -73,7 +72,8 @@ export default function AdminTalleres() {
         await updateDoc(doc(db, 'talleres', editando.id), data);
         toast.success('Taller actualizado');
       } else {
-        await addDoc(collection(db, 'talleres'), { ...data, creadoEn: serverTimestamp() });
+        // alumnosAprobados inicia vacío — necesario para las reglas de seguridad del Camerino
+        await addDoc(collection(db, 'talleres'), { ...data, alumnosAprobados: [], creadoEn: serverTimestamp() });
         toast.success('Taller creado');
       }
       setModal(false);
@@ -83,22 +83,38 @@ export default function AdminTalleres() {
 
   // ── Inscripciones ────────────────────────────────────────────────────
   const aprobarInscripcion = async (i) => {
-    await updateDoc(doc(db, 'inscripciones', i.id), { estado: 'aprobada' });
-    setInscripciones(prev => prev.map(x => x.id === i.id ? { ...x, estado: 'aprobada' } : x));
-    toast.success('Inscripción aprobada — el alumno ya tiene acceso al Camerino');
+    try {
+      await updateDoc(doc(db, 'inscripciones', i.id), { estado: 'aprobada' });
+      // Agregar el uid del alumno al array de aprobados del taller (necesario para el Camerino)
+      await updateDoc(doc(db, 'talleres', i.tallerId), { alumnosAprobados: arrayUnion(i.userId) });
+      setInscripciones(prev => prev.map(x => x.id === i.id ? { ...x, estado: 'aprobada' } : x));
+      toast.success('Inscripción aprobada — el alumno ya tiene acceso al Camerino');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
   };
 
-  const rechazarInscripcion = async (id) => {
-    await updateDoc(doc(db, 'inscripciones', id), { estado: 'rechazada' });
-    setInscripciones(prev => prev.map(x => x.id === id ? { ...x, estado: 'rechazada' } : x));
-    toast.success('Inscripción rechazada');
+  const rechazarInscripcion = async (i) => {
+    try {
+      await updateDoc(doc(db, 'inscripciones', i.id), { estado: 'rechazada' });
+      setInscripciones(prev => prev.map(x => x.id === i.id ? { ...x, estado: 'rechazada' } : x));
+      toast.success('Inscripción rechazada');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
   };
 
-  const quitarAcceso = async (id) => {
+  const quitarAcceso = async (i) => {
     if (!confirm('¿Quitar el acceso de este alumno al taller?')) return;
-    await deleteDoc(doc(db, 'inscripciones', id));
-    setInscripciones(prev => prev.filter(x => x.id !== id));
-    toast.success('Acceso removido');
+    try {
+      await deleteDoc(doc(db, 'inscripciones', i.id));
+      // Quitar el uid del array de aprobados del taller
+      await updateDoc(doc(db, 'talleres', i.tallerId), { alumnosAprobados: arrayRemove(i.userId) });
+      setInscripciones(prev => prev.filter(x => x.id !== i.id));
+      toast.success('Acceso removido');
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
   };
 
   // ── Camerino / materiales ────────────────────────────────────────────
@@ -232,11 +248,11 @@ export default function AdminTalleres() {
                         {i.estado === 'pendiente' && (
                           <>
                             <button onClick={() => aprobarInscripcion(i)} className="btn-primary text-xs py-1.5 px-3">Aprobar</button>
-                            <button onClick={() => rechazarInscripcion(i.id)} className="text-xs py-1.5 px-3 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold">Rechazar</button>
+                            <button onClick={() => rechazarInscripcion(i)} className="text-xs py-1.5 px-3 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 font-heading font-bold">Rechazar</button>
                           </>
                         )}
                         {i.estado === 'aprobada' && (
-                          <button onClick={() => quitarAcceso(i.id)} className="text-xs py-1.5 px-3 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 font-heading font-bold">Quitar acceso</button>
+                          <button onClick={() => quitarAcceso(i)} className="text-xs py-1.5 px-3 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 font-heading font-bold">Quitar acceso</button>
                         )}
                       </div>
                     </div>
@@ -251,7 +267,6 @@ export default function AdminTalleres() {
                 {alumnosAprobados.length} alumno{alumnosAprobados.length !== 1 ? 's' : ''} con acceso a este Camerino
               </p>
 
-              {/* Formulario nuevo material */}
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="font-heading font-bold text-sm text-gray-700 mb-3">Agregar material</p>
                 <div className="flex gap-2 mb-3">
@@ -289,7 +304,6 @@ export default function AdminTalleres() {
                 </button>
               </div>
 
-              {/* Lista de materiales */}
               <div className="space-y-2">
                 {materiales.length === 0
                   ? <p className="text-center text-gray-400 text-sm py-6 font-heading">Aún no hay materiales en este Camerino</p>
@@ -326,7 +340,7 @@ export default function AdminTalleres() {
 
       {/* Modal crear/editar taller */}
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(false)}>
+        <div className="modal-overlay">
           <div className="modal-container max-w-xl p-6" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
               <h2 className="font-heading font-bold text-xl">{editando ? 'Editar taller' : 'Nuevo taller'}</h2>

@@ -13,7 +13,10 @@ service cloud.firestore {
     // ── USUARIOS ──────────────────────────────────────────────
     match /users/{uid} {
       allow read:   if isOwner(uid) || isAdmin() || isProfesor();
-      allow create: if isAuth() && isOwner(uid);
+      // Solo puede crearse a sí mismo, y siempre con role 'alumno' y activo true
+      allow create: if isAuth() && isOwner(uid)
+                    && request.resource.data.role == 'alumno'
+                    && request.resource.data.activo == true;
       allow update: if (isOwner(uid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'activo']))
                     || isAdmin();
       allow delete: if isAdmin();
@@ -39,13 +42,20 @@ service cloud.firestore {
 
     // ── TALLERES ──────────────────────────────────────────────
     match /talleres/{tallerId} {
+      // El campo 'alumnosAprobados' (array de uids) vive en este
+      // mismo documento y lo mantiene el admin/profesor al aprobar
+      // o quitar el acceso de un alumno.
       allow read: if true;
       allow write: if isAdmin() || isProfesor();
 
-      // Camerino — cualquier usuario autenticado puede leer,
-      // el frontend filtra por desbloqueado + inscripción aprobada
+      // Camerino — solo admin/profesor, o un alumno cuyo uid esté
+      // en el array 'alumnosAprobados' del taller padre, y solo si
+      // el material está desbloqueado.
       match /materiales/{materialId} {
-        allow read:  if isAdmin() || isProfesor() || isAuth();
+        allow read: if isAdmin() || isProfesor() ||
+          (isAuth() &&
+           resource.data.desbloqueado == true &&
+           userId() in get(/databases/$(database)/documents/talleres/$(tallerId)).data.alumnosAprobados);
         allow write: if isAdmin() || isProfesor();
       }
       match /fotos/{fotoId} {
@@ -57,7 +67,11 @@ service cloud.firestore {
     // ── INSCRIPCIONES ─────────────────────────────────────────
     match /inscripciones/{inscripcionId} {
       allow read:   if isAdmin() || isProfesor() || (isAuth() && resource.data.userId == userId());
-      allow create: if isAuth();
+      // Solo puede crear una inscripción a su propio nombre, y siempre en estado 'pendiente'
+      allow create: if isAuth()
+                    && request.resource.data.userId == userId()
+                    && request.resource.data.estado == 'pendiente';
+      // Solo admin/profesor pueden cambiar el estado (aprobar/rechazar)
       allow update: if isAdmin() || isProfesor();
       allow delete: if isAdmin();
     }
@@ -71,7 +85,7 @@ service cloud.firestore {
     // ── NOTIFICACIONES ────────────────────────────────────────
     match /notificaciones/{notifId} {
       allow read:   if isAuth() && resource.data.userId == userId();
-      allow create: if true;
+      allow create: if isAuth() && request.resource.data.userId == userId();
       allow update: if isAuth() && resource.data.userId == userId();
       allow delete: if isAdmin();
     }
