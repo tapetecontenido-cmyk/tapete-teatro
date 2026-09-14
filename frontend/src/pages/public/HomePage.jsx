@@ -144,7 +144,8 @@ function CarruselObras({ obras }) {
                 <span className="font-display text-4xl text-white">T</span>
               </div>
               <h2 className="font-display text-4xl text-azul">Tapete</h2>
-              <p className="font-heading text-xl text-cyan tracking-widest">Teatro</p>
+              <p className="font-heading text-xl text-cyan tracking-widest mb-4">Teatro</p>
+              <p className="text-gray-400 text-sm font-heading">Pronto nuevas funciones</p>
             </div>
           </div>
         </div>
