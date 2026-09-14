@@ -262,8 +262,8 @@ export default function HomePage() {
               </h1>
 
               <p className="text-xl text-gray-600 leading-relaxed mb-10 max-w-lg animate-fade-up animate-delay-200">
-                Escuela y compañía teatral venezolana formando actores y llevando
-                el teatro a toda la comunidad desde hace más de una década.
+                El Taller Permanente de Teatro (TAPETE) es un centro de formación pedagógica, creación y producción teatral con sede en Bello Campo, Caracas, Venezuela.
+                ​Fundado en abril de 2014.
               </p>
 
               <div className="flex flex-wrap gap-4 animate-fade-up animate-delay-300">
@@ -367,9 +367,7 @@ export default function HomePage() {
               <h2 className="font-display text-display-sm text-gray-900 mb-6">Más de una década<br />haciendo teatro</h2>
               <div className="brand-divider mb-8" />
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                Tapete Teatro nació del sueño compartido de Antonio Cuevas y Daifra Blanco de llevar el
-                arte escénico a cada rincón de Venezuela. Hoy somos una escuela y compañía reconocida
-                por la formación integral de actores y la producción de teatro de calidad.
+               El Taller Permanente de Teatro (TAPETE) nace de la visión compartida por Antonio Cuevas y Daifra Blanco de consolidar un espacio independiente dedicado a la formación, la investigación pedagógica y la producción escénica en Caracas.
               </p>
               <p className="text-gray-500 leading-relaxed mb-8">
                 Nuestra metodología combina las técnicas teatrales más reconocidas con la vibrante cultura
