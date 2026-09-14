@@ -140,7 +140,7 @@ function CarruselObras({ obras }) {
         <div className="relative bg-gradient-brand rounded-3xl p-1 shadow-brand-lg">
           <div className="bg-white rounded-[1.4rem] overflow-hidden aspect-[4/5] flex items-center justify-center">
             <div className="text-center p-8">
-              <p className="font-display text-3xl text-azul leading-tight">Pronto nuevas<br />funciones</p>
+              <p className="font-display text-7xl text-azul leading-tight">Pronto nuevas<br />funciones</p>
             </div>
           </div>
         </div>
