@@ -66,10 +66,10 @@ export default function Cartelera() {
             {[1,2,3,4].map(i => <div key={i} className="rounded-2xl bg-gray-100 aspect-[4/5] animate-pulse" />)}
           </div>
         ) : obrasFiltradas.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <Ticket size={56} className="mx-auto mb-4 opacity-30" />
-            <h3 className="font-heading text-xl">No hay obras disponibles</h3>
-          </div>
+  <div className="text-center py-20 text-gray-400">
+    <Ticket size={56} className="mx-auto mb-4 opacity-30" />
+    <h3 className="font-heading text-xl">Pronto nuevas funciones</h3>
+  </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {obrasFiltradas.map(obra => (
