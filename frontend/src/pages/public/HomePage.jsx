@@ -451,7 +451,7 @@ export default function HomePage() {
       <section className="py-24 bg-gradient-brand relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 75% 50%, white 0%, transparent 60%)' }} />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white relative">
-          <h2 className="font-display text-display-md mb-6">¿Listo para el escenario?</h2>
+          <h2 className="font-display text-display-md mb-6">¿Listo para actuar?</h2>
           <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto">
             Únete a la familia Tapete Teatro y descubre todo lo que el teatro puede hacer por ti.
           </p>

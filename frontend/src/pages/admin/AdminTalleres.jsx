@@ -10,11 +10,23 @@ import { clsx } from 'clsx';
 
 const NIVELES = ['Básico', 'Intermedio', 'Avanzado', 'Niños', 'Especial', 'Profesional'];
 
+// Colores fijos por nivel — usados también en Home/Talleres públicos
+export const COLOR_NIVEL = {
+  'Básico':      { bg: 'bg-green-100',  text: 'text-green-700' },
+  'Intermedio':  { bg: 'bg-blue-100',   text: 'text-blue-700' },
+  'Avanzado':    { bg: 'bg-purple-100', text: 'text-purple-700' },
+  'Niños':       { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  'Especial':    { bg: 'bg-pink-100',   text: 'text-pink-700' },
+  'Profesional': { bg: 'bg-red-100',    text: 'text-red-700' },
+};
+
 const TIPOS_MATERIAL = [
   { id: 'mensaje', label: 'Mensaje', icon: MessageSquare },
   { id: 'pdf',     label: 'PDF',     icon: FileText },
   { id: 'video',   label: 'Link / Video', icon: Link2 },
 ];
+
+const COLOR_DEFAULT = '#3333CC';
 
 export default function AdminTalleres() {
   const [talleres,      setTalleres]      = useState([]);
@@ -26,7 +38,10 @@ export default function AdminTalleres() {
   const [vistaTab,      setVistaTab]      = useState('inscripciones');
   const [inscripciones, setInscripciones] = useState([]);
   const [materiales,    setMateriales]    = useState([]);
-  const [form,          setForm]          = useState({ nombre: '', descripcion: '', nivel: '', horario: '', duracion: '', precio: '', cupoMaximo: '', profesorId: '', profesorNombre: '' });
+  const [form,          setForm]          = useState({
+    nombre: '', descripcion: '', nivel: '', horario: '', duracion: '',
+    precio: '', cupoMaximo: '', profesoresIds: [], color: COLOR_DEFAULT,
+  });
   const [guardando,     setGuardando]     = useState(false);
 
   const [nuevoMaterial, setNuevoMaterial] = useState({ tipo: 'mensaje', titulo: '', contenido: '' });
@@ -53,28 +68,39 @@ export default function AdminTalleres() {
     setMateriales(matSnap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
+  const toggleProfesorForm = (profId) => {
+    setForm(prev => {
+      const ya = prev.profesoresIds.includes(profId);
+      return { ...prev, profesoresIds: ya ? prev.profesoresIds.filter(id => id !== profId) : [...prev.profesoresIds, profId] };
+    });
+  };
+
   const handleGuardar = async () => {
     if (!form.nombre) { toast.error('El nombre es requerido'); return; }
     setGuardando(true);
     try {
+      const nombresProfesores = form.profesoresIds
+        .map(id => profesores.find(p => p.id === id)?.nombre)
+        .filter(Boolean);
+
       const data = {
-        nombre:        DOMPurify.sanitize(form.nombre.trim()),
-        descripcion:   DOMPurify.sanitize(form.descripcion.trim()),
-        nivel:         form.nivel,
-        horario:       DOMPurify.sanitize(form.horario.trim()),
-        duracion:      form.duracion,
-        precio:        Number(form.precio) || 0,
-        cupoMaximo:    Number(form.cupoMaximo) || 0,
-        profesorId:    form.profesorId,
-        profesorNombre: form.profesorNombre,
-        activo:        true,
-        actualizadoEn: serverTimestamp(),
+        nombre:          DOMPurify.sanitize(form.nombre.trim()),
+        descripcion:     DOMPurify.sanitize(form.descripcion.trim()),
+        nivel:           form.nivel,
+        horario:         DOMPurify.sanitize(form.horario.trim()),
+        duracion:        form.duracion,
+        precio:          Number(form.precio) || 0,
+        cupoMaximo:      Number(form.cupoMaximo) || 0,
+        profesoresIds:   form.profesoresIds,
+        profesoresNombres: nombresProfesores,
+        color:           form.color || COLOR_DEFAULT,
+        activo:          true,
+        actualizadoEn:   serverTimestamp(),
       };
       if (editando) {
         await updateDoc(doc(db, 'talleres', editando.id), data);
         toast.success('Taller actualizado');
       } else {
-        // alumnosAprobados inicia vacío — necesario para las reglas de seguridad del Camerino
         await addDoc(collection(db, 'talleres'), { ...data, alumnosAprobados: [], creadoEn: serverTimestamp() });
         toast.success('Taller creado');
       }
@@ -87,9 +113,7 @@ export default function AdminTalleres() {
   const aprobarInscripcion = async (i) => {
     try {
       await updateDoc(doc(db, 'inscripciones', i.id), { estado: 'aprobada' });
-      // Agregar el uid del alumno al array de aprobados del taller (necesario para el Camerino)
       await updateDoc(doc(db, 'talleres', i.tallerId), { alumnosAprobados: arrayUnion(i.userId) });
-      // Notificar al alumno
       await addDoc(collection(db, 'notificaciones'), {
         userId:   i.userId,
         titulo:   '¡Inscripción aprobada!',
@@ -118,7 +142,6 @@ export default function AdminTalleres() {
     if (!confirm('¿Quitar el acceso de este alumno al taller?')) return;
     try {
       await deleteDoc(doc(db, 'inscripciones', i.id));
-      // Quitar el uid del array de aprobados del taller
       await updateDoc(doc(db, 'talleres', i.tallerId), { alumnosAprobados: arrayRemove(i.userId) });
       setInscripciones(prev => prev.filter(x => x.id !== i.id));
       toast.success('Acceso removido');
@@ -166,7 +189,6 @@ export default function AdminTalleres() {
     await updateDoc(doc(db, 'talleres', tabId, 'materiales', material.id), { desbloqueado: nuevoEstado });
     setMateriales(prev => prev.map(m => m.id === material.id ? { ...m, desbloqueado: nuevoEstado } : m));
 
-    // Notificar a los alumnos aprobados del taller solo al desbloquear
     if (nuevoEstado && tallerActivo?.alumnosAprobados?.length > 0) {
       const tipoLabel = material.tipo === 'pdf' ? 'un nuevo PDF' : material.tipo === 'video' ? 'un nuevo enlace' : 'un nuevo mensaje';
       await Promise.all(tallerActivo.alumnosAprobados.filter(Boolean).map(uid =>
@@ -191,43 +213,70 @@ export default function AdminTalleres() {
   const alumnosAprobados = inscripciones.filter(i => i.estado === 'aprobada');
   const alumnosPendientes = inscripciones.filter(i => i.estado === 'pendiente');
 
+  const abrirNuevo = () => {
+    setEditando(null);
+    setForm({ nombre: '', descripcion: '', nivel: '', horario: '', duracion: '', precio: '', cupoMaximo: '', profesoresIds: [], color: COLOR_DEFAULT });
+    setModal(true);
+  };
+
+  const abrirEditar = (t) => {
+    setEditando(t);
+    setForm({
+      nombre: t.nombre, descripcion: t.descripcion || '', nivel: t.nivel || '',
+      horario: t.horario || '', duracion: t.duracion || '', precio: t.precio || '',
+      cupoMaximo: t.cupoMaximo || '',
+      profesoresIds: t.profesoresIds || (t.profesorId ? [t.profesorId] : []),
+      color: t.color || COLOR_DEFAULT,
+    });
+    setModal(true);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-display-sm text-gray-900">Talleres</h1>
-        <button onClick={() => { setEditando(null); setForm({ nombre: '', descripcion: '', nivel: '', horario: '', duracion: '', precio: '', cupoMaximo: '', profesorId: '', profesorNombre: '' }); setModal(true); }} className="btn-primary gap-2"><Plus size={18} /> Nuevo taller</button>
+        <button onClick={abrirNuevo} className="btn-primary gap-2"><Plus size={18} /> Nuevo taller</button>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {talleres.map(t => (
-          <div key={t.id} className="card p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center"><BookOpen size={18} className="text-white" /></div>
-              <span className="badge bg-azul/10 text-azul">{t.nivel}</span>
+        {talleres.map(t => {
+          const colorNivel = COLOR_NIVEL[t.nivel] || { bg: 'bg-gray-100', text: 'text-gray-600' };
+          const nombresProfes = t.profesoresNombres?.length ? t.profesoresNombres.join(', ') : (t.profesorNombre || '—');
+          return (
+            <div key={t.id} className="card overflow-hidden">
+              <div className="h-2" style={{ background: t.color || COLOR_DEFAULT }} />
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: t.color || COLOR_DEFAULT }}>
+                    <BookOpen size={18} className="text-white" />
+                  </div>
+                  <span className={clsx('badge', colorNivel.bg, colorNivel.text)}>{t.nivel}</span>
+                </div>
+                <h3 className="font-heading font-bold text-gray-900">{t.nombre}</h3>
+                <p className="text-gray-500 text-sm mt-1 line-clamp-2">{t.descripcion}</p>
+                <div className="mt-3 text-sm space-y-1 text-gray-500">
+                  <p>🕐 {t.horario}</p>
+                  <p>👤 {nombresProfes}</p>
+                  {t.precio > 0 && <p className="font-heading font-bold text-azul">${t.precio} USD</p>}
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  <button onClick={() => abrirEditar(t)}
+                    className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors">
+                    <Edit2 size={13} /> Editar
+                  </button>
+                  <button onClick={() => abrirTaller(t.id, 'inscripciones')}
+                    className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors">
+                    <Users size={13} /> Alumnos
+                  </button>
+                  <button onClick={() => abrirTaller(t.id, 'camerino')}
+                    className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors">
+                    <FileText size={13} /> Camerino
+                  </button>
+                </div>
+              </div>
             </div>
-            <h3 className="font-heading font-bold text-gray-900">{t.nombre}</h3>
-            <p className="text-gray-500 text-sm mt-1 line-clamp-2">{t.descripcion}</p>
-            <div className="mt-3 text-sm space-y-1 text-gray-500">
-              <p>🕐 {t.horario}</p>
-              <p>👤 {t.profesorNombre || '—'}</p>
-              {t.precio > 0 && <p className="font-heading font-bold text-azul">${t.precio} USD</p>}
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-4">
-              <button onClick={() => { setEditando(t); setForm({ nombre: t.nombre, descripcion: t.descripcion || '', nivel: t.nivel || '', horario: t.horario || '', duracion: t.duracion || '', precio: t.precio || '', cupoMaximo: t.cupoMaximo || '', profesorId: t.profesorId || '', profesorNombre: t.profesorNombre || '' }); setModal(true); }}
-                className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors">
-                <Edit2 size={13} /> Editar
-              </button>
-              <button onClick={() => abrirTaller(t.id, 'inscripciones')}
-                className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-cyan hover:text-cyan transition-colors">
-                <Users size={13} /> Alumnos
-              </button>
-              <button onClick={() => abrirTaller(t.id, 'camerino')}
-                className="flex items-center justify-center gap-1 py-2 rounded-lg border border-gray-200 text-xs font-heading font-bold text-gray-600 hover:border-azul hover:text-azul transition-colors">
-                <FileText size={13} /> Camerino
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Panel de gestión del taller */}
@@ -249,7 +298,6 @@ export default function AdminTalleres() {
             <button onClick={() => setTabId(null)}><X size={18} className="text-gray-400" /></button>
           </div>
 
-          {/* Vista Inscripciones */}
           {vistaTab === 'inscripciones' && (
             inscripciones.length === 0
               ? <p className="text-gray-400 text-sm font-heading text-center py-6">Sin solicitudes de inscripción</p>
@@ -285,7 +333,6 @@ export default function AdminTalleres() {
                 </div>
           )}
 
-          {/* Vista Camerino */}
           {vistaTab === 'camerino' && (
             <div className="space-y-6">
               <p className="text-sm text-gray-500">
@@ -383,12 +430,36 @@ export default function AdminTalleres() {
                 <div><label className="label-field">Horario</label><input value={form.horario} onChange={e => setForm(p => ({...p, horario: e.target.value}))} className="input-field" placeholder="Lunes 6pm" /></div>
                 <div><label className="label-field">Cupo máximo</label><input type="number" value={form.cupoMaximo} onChange={e => setForm(p => ({...p, cupoMaximo: e.target.value}))} className="input-field" /></div>
               </div>
-              <div><label className="label-field">Profesor</label>
-                <select value={form.profesorId} onChange={e => { const p = profesores.find(p => p.id === e.target.value); setForm(prev => ({...prev, profesorId: e.target.value, profesorNombre: p?.nombre || ''})); }} className="input-field">
-                  <option value="">Sin asignar</option>
-                  {profesores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
+
+              {/* Color de la tarjeta */}
+              <div>
+                <label className="label-field">Color de la tarjeta</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={form.color} onChange={e => setForm(p => ({ ...p, color: e.target.value }))}
+                    className="w-12 h-10 rounded-lg border border-gray-200 cursor-pointer" />
+                  <span className="text-sm text-gray-500 font-mono">{form.color}</span>
+                </div>
               </div>
+
+              {/* Múltiples profesores */}
+              <div>
+                <label className="label-field mb-2">Profesores</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {profesores.map(p => (
+                    <button key={p.id} type="button" onClick={() => toggleProfesorForm(p.id)}
+                      className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-heading font-bold border-2 transition-all text-left',
+                        form.profesoresIds.includes(p.id) ? 'border-azul bg-azul/5 text-azul' : 'border-gray-200 text-gray-600 hover:border-azul')}>
+                      <div className={clsx('w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center',
+                        form.profesoresIds.includes(p.id) ? 'bg-azul border-azul' : 'border-gray-300')}>
+                        {form.profesoresIds.includes(p.id) && <CheckCircle size={12} className="text-white" />}
+                      </div>
+                      <span className="truncate">{p.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+                {profesores.length === 0 && <p className="text-xs text-gray-400 mt-1">No hay profesores registrados aún</p>}
+              </div>
+
               <div><label className="label-field">Descripción</label><textarea value={form.descripcion} onChange={e => setForm(p => ({...p, descripcion: e.target.value}))} className="input-field resize-none" rows={3} /></div>
             </div>
             <div className="flex gap-3 mt-6">

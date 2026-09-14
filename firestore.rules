@@ -45,24 +45,32 @@ service cloud.firestore {
       // El campo 'alumnosAprobados' (array de uids) vive en este
       // mismo documento y lo mantiene el admin/profesor al aprobar
       // o quitar el acceso de un alumno.
+      // El campo 'profesoresIds' (array de uids) permite varios
+      // profesores por taller.
       allow read: if true;
-      allow write: if isAdmin() || isProfesor();
+      // Solo admin puede crear o eliminar talleres
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      // Admin siempre puede editar; un profesor solo si está
+      // asignado a este taller específico
+      allow update: if isAdmin() ||
+        (isProfesor() && userId() in resource.data.profesoresIds);
 
-      // Camerino — solo admin/profesor, o un alumno cuyo uid esté
-      // en el array 'alumnosAprobados' del taller padre, y solo si
-      // el material está desbloqueado.
-            match /materiales/{materialId} {
+      // Camerino — solo admin/profesor asignado, o un alumno cuyo
+      // uid esté en 'alumnosAprobados', y solo si el material está
+      // desbloqueado.
+      match /materiales/{materialId} {
         allow read: if isAdmin() || isProfesor() ||
           (isAuth() &&
            resource.data.desbloqueado == true &&
            userId() in get(/databases/$(database)/documents/talleres/$(tallerId)).data.alumnosAprobados);
         allow write: if isAdmin() ||
-          (isProfesor() && get(/databases/$(database)/documents/talleres/$(tallerId)).data.profesorId == userId());
+          (isProfesor() && userId() in get(/databases/$(database)/documents/talleres/$(tallerId)).data.profesoresIds);
       }
       match /fotos/{fotoId} {
         allow read: if isAuth();
         allow write: if isAdmin() ||
-          (isProfesor() && get(/databases/$(database)/documents/talleres/$(tallerId)).data.profesorId == userId());
+          (isProfesor() && userId() in get(/databases/$(database)/documents/talleres/$(tallerId)).data.profesoresIds);
       }
     }
 
@@ -86,13 +94,13 @@ service cloud.firestore {
 
     // ── NOTIFICACIONES ────────────────────────────────────────
     match /notificaciones/{notifId} {
-  allow read:   if isAuth() && resource.data.userId == userId();
-  // Un usuario puede crear notificaciones para sí mismo,
-  // y admin/profesor pueden crear notificaciones para cualquier alumno
-  allow create: if isAuth() && (request.resource.data.userId == userId() || isAdmin() || isProfesor());
-  allow update: if isAuth() && resource.data.userId == userId();
-  allow delete: if isAdmin();
-}
+      allow read:   if isAuth() && resource.data.userId == userId();
+      // Un usuario puede crear notificaciones para sí mismo,
+      // y admin/profesor pueden crear notificaciones para cualquier alumno
+      allow create: if isAuth() && (request.resource.data.userId == userId() || isAdmin() || isProfesor());
+      allow update: if isAuth() && resource.data.userId == userId();
+      allow delete: if isAdmin();
+    }
 
     // ── CONFIGURACIÓN ─────────────────────────────────────────
     match /configuracion/{docId} {
