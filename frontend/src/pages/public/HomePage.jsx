@@ -365,10 +365,6 @@ export default function HomePage() {
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
                El Taller Permanente de Teatro (TAPETE) nace de la visión compartida por Antonio Cuevas y Daifra Blanco de consolidar un espacio independiente dedicado a la formación, la investigación pedagógica y la producción escénica en Caracas.
               </p>
-              <p className="text-gray-500 leading-relaxed mb-8">
-                Nuestra metodología combina las técnicas teatrales más reconocidas con la vibrante cultura
-                venezolana, creando un espacio donde la creatividad, la disciplina y la pasión se unen.
-              </p>
               <Link to="/quienes-somos" className="btn-primary gap-2">Conocer más <ArrowRight size={18} /></Link>
             </div>
             <div className="grid grid-cols-2 gap-4">
