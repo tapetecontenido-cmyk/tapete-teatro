@@ -1,10 +1,10 @@
 // src/pages/auth/PerfilAlumno.jsx
 import { useState, useEffect } from 'react';
-import { doc, updateDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { subirArchivo } from '../../utils/subirArchivo';
-import { db, storage } from '../../services/firebase';
+import { db } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
-import { Camera, Edit2, Save, X, Ticket, BookOpen } from 'lucide-react';
+import { Camera, Edit2, Save, X, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -13,13 +13,12 @@ import DOMPurify from 'dompurify';
 
 export default function PerfilAlumno() {
   const { user, perfil, cargarPerfil } = useAuth();
-  const [editando,   setEditando]   = useState(false);
-  const [form,       setForm]       = useState({});
-  const [reservas,   setReservas]   = useState([]);
+  const [editando,      setEditando]      = useState(false);
+  const [form,          setForm]          = useState({});
   const [inscripciones, setInscripciones] = useState([]);
-  const [tab,        setTab]        = useState('reservas');
-  const [subiendoFoto, setSubiendoFoto] = useState(false);
-  const [guardando,  setGuardando]  = useState(false);
+  const [cargando,      setCargando]      = useState(true);
+  const [subiendoFoto,  setSubiendoFoto]  = useState(false);
+  const [guardando,     setGuardando]     = useState(false);
 
   useEffect(() => {
     if (perfil) setForm({ nombre: perfil.nombre, cedula: perfil.cedula, telefono: perfil.telefono, bio: perfil.bio || '', nivel: perfil.nivel || '' });
@@ -27,24 +26,32 @@ export default function PerfilAlumno() {
 
   useEffect(() => {
     if (!user) return;
-    getDocs(query(collection(db, 'reservas'), where('userId', '==', user.uid), orderBy('creadoEn', 'desc')))
-      .then(snap => setReservas(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    getDocs(query(collection(db, 'inscripciones'), where('userId', '==', user.uid), orderBy('creadoEn', 'desc')))
-      .then(snap => setInscripciones(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    // Sin orderBy para evitar depender de un índice compuesto
+    getDocs(query(collection(db, 'inscripciones'), where('userId', '==', user.uid)))
+      .then(snap => {
+        const datos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Ordenar en el cliente por fecha de creación, más reciente primero
+        datos.sort((a, b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
+        setInscripciones(datos);
+      })
+      .catch(err => console.error('Error cargando inscripciones:', err.message))
+      .finally(() => setCargando(false));
   }, [user]);
 
   const handleFoto = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error('Máximo 5MB'); return; }
     setSubiendoFoto(true);
     try {
       const url = await subirArchivo(file, 'perfiles');
       await updateDoc(doc(db, 'users', user.uid), { fotoPerfil: url });
       await cargarPerfil(user.uid);
       toast.success('Foto actualizada');
-    } catch { toast.error('Error al subir foto'); }
-    finally { setSubiendoFoto(false); }
+    } catch (err) {
+      toast.error(err.message || 'Error al subir foto');
+    } finally {
+      setSubiendoFoto(false);
+    }
   };
 
   const handleGuardar = async () => {
@@ -62,6 +69,20 @@ export default function PerfilAlumno() {
       toast.success('Perfil actualizado');
     } catch { toast.error('Error al guardar'); }
     finally { setGuardando(false); }
+  };
+
+  const getEstadoBadge = (estado) => {
+    const map = {
+      pendiente: 'badge-pending',
+      aprobada:  'badge-confirmed',
+      rechazada: 'badge-cancelled',
+    };
+    return map[estado] || 'badge-pending';
+  };
+
+  const getEstadoLabel = (estado) => {
+    const map = { pendiente: 'Pendiente', aprobada: 'Aprobada', rechazada: 'Rechazada' };
+    return map[estado] || estado;
   };
 
   if (!perfil) return <div className="min-h-screen flex items-center justify-center pt-20"><div className="spinner w-10 h-10" /></div>;
@@ -118,64 +139,38 @@ export default function PerfilAlumno() {
             </div>
           </div>
 
-          {/* Contenido principal */}
+          {/* Contenido principal — Mis talleres */}
           <div className="lg:col-span-2">
-            {/* Tabs */}
-            <div className="flex gap-2 mb-5">
-              {[['reservas', Ticket, 'Mis Reservas'], ['inscripciones', BookOpen, 'Mis Talleres']].map(([t, Icon, label]) => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={clsx('flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading font-bold text-sm transition-all',
-                    tab === t ? 'bg-azul text-white shadow-brand' : 'bg-white border border-gray-200 text-gray-600 hover:border-azul hover:text-azul'
-                  )}>
-                  <Icon size={16} />{label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 mb-5">
+              <BookOpen size={18} className="text-azul" />
+              <h2 className="font-heading font-bold text-gray-900 text-lg">Mis Talleres</h2>
             </div>
 
-            {/* Reservas */}
-            {tab === 'reservas' && (
+            {cargando ? (
               <div className="space-y-3">
-                {reservas.length === 0
-                  ? <div className="card p-12 text-center text-gray-400"><Ticket size={40} className="mx-auto mb-3 opacity-30" /><p className="font-heading">No tienes reservas aún</p></div>
-                  : reservas.map(r => (
-                    <div key={r.id} className="card p-5 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-azul/10 flex items-center justify-center flex-shrink-0"><Ticket size={18} className="text-azul" /></div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-heading font-bold text-gray-900 truncate">{r.obraNombre || 'Obra'}</p>
-                        <p className="text-xs text-gray-400">
-                          {r.asientos?.join(', ')} · ${r.total} USD ·
-                          {r.creadoEn && ' ' + format(r.creadoEn.toDate?.() || new Date(), "d MMM yyyy", { locale: es })}
-                        </p>
-                      </div>
-                      <span className={clsx('badge flex-shrink-0', r.estado === 'confirmada' ? 'badge-confirmed' : r.estado === 'cancelada' ? 'badge-cancelled' : 'badge-pending')}>
-                        {r.estado}
-                      </span>
-                    </div>
-                  ))
-                }
+                {[1, 2].map(i => <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />)}
               </div>
-            )}
-
-            {/* Inscripciones */}
-            {tab === 'inscripciones' && (
+            ) : inscripciones.length === 0 ? (
+              <div className="card p-12 text-center text-gray-400">
+                <BookOpen size={40} className="mx-auto mb-3 opacity-30" />
+                <p className="font-heading">No estás inscrito en ningún taller aún</p>
+              </div>
+            ) : (
               <div className="space-y-3">
-                {inscripciones.length === 0
-                  ? <div className="card p-12 text-center text-gray-400"><BookOpen size={40} className="mx-auto mb-3 opacity-30" /><p className="font-heading">No estás inscrito en talleres</p></div>
-                  : inscripciones.map(i => (
-                    <div key={i.id} className="card p-5 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-cyan/10 flex items-center justify-center flex-shrink-0"><BookOpen size={18} className="text-cyan" /></div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-heading font-bold text-gray-900 truncate">{i.tallerNombre || 'Taller'}</p>
-                        <p className="text-xs text-gray-400">
-                          {i.creadoEn && format(i.creadoEn.toDate?.() || new Date(), "d MMM yyyy", { locale: es })}
-                        </p>
-                      </div>
-                      <span className={clsx('badge flex-shrink-0', i.estado === 'confirmada' ? 'badge-confirmed' : i.estado === 'cancelada' ? 'badge-cancelled' : 'badge-pending')}>
-                        {i.estado}
-                      </span>
+                {inscripciones.map(i => (
+                  <div key={i.id} className="card p-5 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-cyan/10 flex items-center justify-center flex-shrink-0"><BookOpen size={18} className="text-cyan" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-heading font-bold text-gray-900 truncate">{i.tallerNombre || 'Taller'}</p>
+                      <p className="text-xs text-gray-400">
+                        {i.creadoEn && format(i.creadoEn.toDate?.() || new Date(), "d MMM yyyy", { locale: es })}
+                      </p>
                     </div>
-                  ))
-                }
+                    <span className={clsx('badge flex-shrink-0', getEstadoBadge(i.estado))}>
+                      {getEstadoLabel(i.estado)}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
