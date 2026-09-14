@@ -10,6 +10,7 @@ import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 import DOMPurify from 'dompurify';
+import { Link } from 'react-router-dom';
 
 export default function PerfilAlumno() {
   const { user, perfil, cargarPerfil } = useAuth();
