@@ -6,7 +6,20 @@ import { db } from '../../services/firebase';
 import { BookOpen, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 
-const NIVELES = ['Todos', 'Básico', 'Intermedio', 'Avanzado', 'Niños', 'Especial', 'Profesional'];
+const NIVELES = ['Todos', 'Básico', 'Intermedio', 'Avanzado', 'Niños', 'Adolescentes', 'Especial', 'Profesional'];
+
+// Colores fijos por nivel (mismo criterio que en el panel admin)
+const COLOR_NIVEL = {
+  'Básico':       { bg: 'bg-green-100',  text: 'text-green-700' },
+  'Intermedio':   { bg: 'bg-blue-100',   text: 'text-blue-700' },
+  'Avanzado':     { bg: 'bg-purple-100', text: 'text-purple-700' },
+  'Niños':        { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  'Adolescentes': { bg: 'bg-orange-100', text: 'text-orange-700' },
+  'Especial':     { bg: 'bg-pink-100',   text: 'text-pink-700' },
+  'Profesional':  { bg: 'bg-red-100',    text: 'text-red-700' },
+};
+
+const COLOR_DEFAULT = '#3333CC';
 
 export default function Talleres() {
   const [talleres, setTalleres] = useState([]);
@@ -56,22 +69,32 @@ export default function Talleres() {
           <div className="text-center py-20 text-gray-400"><BookOpen size={56} className="mx-auto mb-4 opacity-30" /><h3 className="font-heading text-xl">No hay talleres disponibles</h3></div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtrados.map(t => (
-              <Link key={t.id} to={`/talleres/${t.id}`} className="card group p-6 flex flex-col gap-4">
-                <div className="flex items-start justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-brand flex items-center justify-center"><BookOpen size={20} className="text-white" /></div>
-                  <span className="badge bg-azul/10 text-azul">{t.nivel}</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-heading font-bold text-gray-900 text-lg">{t.nombre}</h3>
-                  <p className="text-gray-500 text-sm mt-2 line-clamp-3">{t.descripcion}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm border-t border-gray-100 pt-3">
-                  <div><p className="text-xs text-gray-400 font-heading">Horario</p><p className="font-medium text-gray-700">{t.horario}</p></div>
-                  <div><p className="text-xs text-gray-400 font-heading">Precio</p><p className="font-heading font-bold text-azul">${t.precio} USD</p></div>
-                </div>
-              </Link>
-            ))}
+            {filtrados.map(t => {
+              const colorNivel = COLOR_NIVEL[t.nivel] || { bg: 'bg-gray-100', text: 'text-gray-600' };
+              return (
+                <Link key={t.id} to={`/talleres/${t.id}`} className="card group overflow-hidden flex flex-col">
+                  <div className="h-2" style={{ background: t.color || COLOR_DEFAULT }} />
+                  <div className="p-6 flex flex-col gap-4 flex-1">
+                    <div className="flex items-start justify-between">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: t.color || COLOR_DEFAULT }}>
+                        <BookOpen size={20} className="text-white" />
+                      </div>
+                      <span className={clsx('badge', colorNivel.bg, colorNivel.text)}>{t.nivel}</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-heading font-bold text-gray-900 text-lg">{t.nombre}</h3>
+                      <p className="text-gray-500 text-sm mt-2 line-clamp-3">{t.descripcion}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm border-t border-gray-100 pt-3">
+                      <div><p className="text-xs text-gray-400 font-heading">Horario</p><p className="font-medium text-gray-700">{t.horario}</p></div>
+                      {t.precio > 0 && (
+                        <div><p className="text-xs text-gray-400 font-heading">Precio</p><p className="font-heading font-bold text-azul">${t.precio} USD</p></div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
