@@ -157,21 +157,30 @@ export default function PerfilAlumno() {
               </div>
             ) : (
               <div className="space-y-3">
-                {inscripciones.map(i => (
-                  <div key={i.id} className="card p-5 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-cyan/10 flex items-center justify-center flex-shrink-0"><BookOpen size={18} className="text-cyan" /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-heading font-bold text-gray-900 truncate">{i.tallerNombre || 'Taller'}</p>
-                      <p className="text-xs text-gray-400">
-                        {i.creadoEn && format(i.creadoEn.toDate?.() || new Date(), "d MMM yyyy", { locale: es })}
-                      </p>
-                    </div>
-                    <span className={clsx('badge flex-shrink-0', getEstadoBadge(i.estado))}>
-                      {getEstadoLabel(i.estado)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+  {inscripciones.map(i => {
+    const esClickeable = i.estado === 'aprobada';
+    const Contenedor = esClickeable ? Link : 'div';
+    return (
+      <Contenedor key={i.id}
+        {...(esClickeable ? { to: '/camerino' } : {})}
+        className={clsx(
+          'card p-5 flex items-center gap-4',
+          esClickeable && 'cursor-pointer hover:border-azul/30 transition-colors'
+        )}>
+        <div className="w-10 h-10 rounded-xl bg-cyan/10 flex items-center justify-center flex-shrink-0"><BookOpen size={18} className="text-cyan" /></div>
+        <div className="flex-1 min-w-0">
+          <p className="font-heading font-bold text-gray-900 truncate">{i.tallerNombre || 'Taller'}</p>
+          <p className="text-xs text-gray-400">
+            {i.creadoEn && format(i.creadoEn.toDate?.() || new Date(), "d MMM yyyy", { locale: es })}
+          </p>
+        </div>
+        <span className={clsx('badge flex-shrink-0', getEstadoBadge(i.estado))}>
+          {getEstadoLabel(i.estado)}
+        </span>
+      </Contenedor>
+    );
+  })}
+</div>
             )}
           </div>
         </div>
