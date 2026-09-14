@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import DOMPurify from 'dompurify';
 import { clsx } from 'clsx';
 
-const NIVELES = ['Básico', 'Intermedio', 'Avanzado', 'Niños', 'Especial', 'Profesional'];
+const NIVELES = ['Básico', 'Intermedio', 'Avanzado', 'Profesional', 'Niños', 'Adolescentes', 'Especial'];
 
 // Colores fijos por nivel — usados también en Home/Talleres públicos
 export const COLOR_NIVEL = {
@@ -16,6 +16,7 @@ export const COLOR_NIVEL = {
   'Intermedio':  { bg: 'bg-blue-100',   text: 'text-blue-700' },
   'Avanzado':    { bg: 'bg-purple-100', text: 'text-purple-700' },
   'Niños':       { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  'Adolescentes':{ bg: 'bg-orange-100', text: 'text-orange-700' },
   'Especial':    { bg: 'bg-pink-100',   text: 'text-pink-700' },
   'Profesional': { bg: 'bg-red-100',    text: 'text-red-700' },
 };
